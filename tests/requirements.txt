@@ -1,0 +1,8 @@
+pytest
+pytest-asyncio
+selenium
+webdriver-manager
+sqlalchemy
+fastapi
+pydantic
+httpx
