@@ -1,24 +1,156 @@
-body { font-family: Arial, sans-serif; margin: 0; padding: 0; background-color: #f8f9fa; }
-.container { display: flex; height: 100vh; }
-.sidebar { flex: 1; border-right: 1px solid #ccc; padding: 20px; background: #fff; overflow-y: auto; }
-.main-content { flex: 1.5; padding: 20px; overflow-y: auto; }
-form { display: flex; flex-direction: column; gap: 10px; margin-bottom: 20px; }
-input, textarea { padding: 8px; border: 1px solid #ddd; border-radius: 4px; font-size: 14px; }
-button { padding: 10px; background: #28a745; color: #fff; border: none; border-radius: 4px; cursor: pointer; font-weight: bold; }
-button:hover { background: #218838; }
-#task-form { flex-direction: row; }
-#task-form input { flex: 1; }
-#task-form button { background: #007bff; }
-#task-form button:hover { background: #0069d9; }
-.goals-list { display: flex; flex-direction: column; gap: 10px; }
-.goal-item { padding: 15px; border: 1px solid #ddd; border-radius: 5px; cursor: pointer; transition: background 0.2s; }
-.goal-item:hover { background: #f1f3f5; }
-.goal-item.active { background: #e9ecef; border-color: #ced4da; }
-.placeholder { color: #888; text-align: center; margin-top: 100px; }
-.task-item { display: flex; align-items: center; gap: 10px; padding: 10px 0; border-bottom: 1px solid #eee; font-size: 16px; }
-.task-item input[type="checkbox"] { width: 18px; height: 18px; cursor: pointer; }
-.completed { text-decoration: line-through; color: #888; }
-ul { list-style: none; padding: 0; }
-.progress-container { width: 100%; background-color: #e9ecef; border-radius: 10px; margin-top: 10px; height: 8px; overflow: hidden; }
-.progress-bar { height: 100%; background-color: #28a745; width: 0%; transition: width 0.4s ease; }
-.progress-text { font-size: 12px; color: #6c757d; display: inline-block; margin-top: 4px; }
+body {
+    font-family: Arial, sans-serif;
+    margin: 0;
+    padding: 0;
+    background-color: #f8f9fa;
+}
+
+.container {
+    display: flex;
+    height: 100vh;
+}
+
+.sidebar {
+    flex: 1;
+    border-right: 1px solid #ccc;
+    padding: 20px;
+    background: #fff;
+    overflow-y: auto;
+}
+
+.main-content {
+    flex: 1.5;
+    padding: 20px;
+    overflow-y: auto;
+}
+
+form {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+    margin-bottom: 20px;
+}
+
+input, textarea {
+    padding: 8px;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    font-size: 14px;
+}
+
+button {
+    padding: 10px;
+    background: #28a745;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    cursor: pointer;
+    font-weight: bold;
+}
+
+button:hover {
+    background: #218838;
+}
+
+#task-form {
+    flex-direction: row;
+}
+
+#task-form input {
+    flex: 1;
+}
+
+#task-form button {
+    background: #007bff;
+}
+
+#task-form button:hover {
+    background: #0069d9;
+}
+
+.goals-list {
+    display: flex;
+    flex-direction: column;
+    gap: 10px;
+}
+
+.goal-item {
+    padding: 15px;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+    cursor: pointer;
+    transition: background 0.2s;
+}
+
+.goal-item:hover {
+    background: #f1f3f5;
+}
+
+.goal-item.active {
+    background: #e9ecef;
+    border-color: #ced4da;
+}
+
+.goal-item h3 {
+    margin: 0 0 5px 0;
+}
+
+.goal-item p {
+    margin: 0;
+    color: #666;
+    font-size: 14px;
+}
+
+.placeholder {
+    color: #888;
+    text-align: center;
+    margin-top: 100px;
+}
+
+.task-item {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+    padding: 10px 0;
+    border-bottom: 1px solid #eee;
+    font-size: 16px;
+}
+
+.task-item input[type="checkbox"] {
+    width: 18px;
+    height: 18px;
+    cursor: pointer;
+}
+
+.completed {
+    text-decoration: line-through;
+    color: #888;
+}
+
+ul {
+    list-style: none;
+    padding: 0;
+}
+/* Стили для прогресс-бара целей */
+.progress-container {
+    width: 100%;
+    background-color: #e9ecef;
+    border-radius: 10px;
+    margin-top: 10px;
+    height: 8px;
+    overflow: hidden;
+}
+
+.progress-bar {
+    height: 100%;
+    background-color: #28a745; /* Зеленый цвет прогресса */
+    width: 0%;
+    transition: width 0.4s ease; /* Плавное заполнение полосы */
+}
+
+.progress-text {
+    font-size: 12px;
+    color: #6c757d;
+    display: inline-block;
+    margin-top: 4px;
+}

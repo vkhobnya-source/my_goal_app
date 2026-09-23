@@ -1,0 +1,27 @@
+FROM python:3.11-alpine
+
+WORKDIR /app
+
+# Устанавливаем Chromium браузер и драйвер для работы Selenium в Alpine Linux
+RUN apk add --no-cache \
+    chromium \
+    chromium-chromedriver \
+    gcc \
+    musl-dev \
+    libffi-dev
+
+# Настраиваем переменные окружения для Selenium
+ENV CHROME_BIN=/usr/bin/chromium-browser
+ENV CHROMEDRIVER_PATH=/usr/bin/chromedriver
+
+# Копируем и устанавливаем зависимости
+COPY ./tests/requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Явно копируем папку с тестами из корня проекта в рабочую директорию
+COPY ./tests /app/tests
+
+WORKDIR /app/tests
+
+CMD ["pytest", "-v"]
+

@@ -4,18 +4,19 @@ from sqlalchemy.orm import Session
 from typing import List
 from . import models, schemas, database
 
+# Автоматически создаем таблицы при запуске
 models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(title="Goals & Tasks Tracker API")
 
+# Настройка CORS, чтобы React (обычно порт 5173 или 3000) мог делать запросы
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],  # Разрешаем запросы со всех хостов внутри docker-сети
+    allow_origins=["*"],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
-
 
 @app.get("/api/goals", response_model=List[schemas.Goal])
 def get_goals(db: Session = Depends(database.get_db)):
@@ -28,15 +29,6 @@ def create_goal(goal: schemas.GoalCreate, db: Session = Depends(database.get_db)
     db.commit()
     db.refresh(db_goal)
     return db_goal
-
-@app.delete("/api/goals/{goal_id}", status_code=204)
-def delete_goal(goal_id: int, db: Session = Depends(database.get_db)):
-    db_goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
-    if not db_goal:
-        raise HTTPException(status_code=404, detail="Goal not found")
-    db.delete(db_goal)
-    db.commit()
-    return None
 
 @app.get("/api/goals/{goal_id}/tasks", response_model=List[schemas.Task])
 def get_tasks(goal_id: int, db: Session = Depends(database.get_db)):

@@ -5,13 +5,15 @@ from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
 from sqlalchemy.pool import StaticPool
 
+# Добавляем корень проекта в пути
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
 
 from backend.app.database import Base, get_db
-from backend.app.models import Goal, Task 
+from backend.app.models import Goal, Task
 from backend.app.main import app
 
-# Использование StaticPool критично для SQLite :memory: в тестах
+# Использование StaticPool критично для SQLite :memory: в тестах.
+# Это гарантирует, что все потоки и запросы TestClient используют ОДНО И ТО ЖЕ соединение с БД.
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 engine = create_engine(
     SQLALCHEMY_DATABASE_URL,
@@ -20,8 +22,10 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
+
 @pytest.fixture(scope="function")
 def db_session():
+    # Создаем таблицы в изолированной базе данных
     Base.metadata.create_all(bind=engine)
     session = TestingSessionLocal()
     try:
@@ -30,16 +34,22 @@ def db_session():
         session.close()
         Base.metadata.drop_all(bind=engine)
 
+
 @pytest.fixture(scope="function")
 def client(db_session):
+    # Надежное переопределение зависимости для FastAPI
     def override_get_db():
         try:
             yield db_session
         finally:
             pass
-            
+
     app.dependency_overrides[get_db] = override_get_db
+
     from fastapi.testclient import TestClient
+    # Используем контекстный менеджер для очистки после выполнения теста
     with TestClient(app) as test_client:
         yield test_client
+
+    # Чистим переопределения после каждого теста
     app.dependency_overrides.clear()

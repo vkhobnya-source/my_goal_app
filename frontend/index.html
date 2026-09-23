@@ -7,7 +7,9 @@
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
+
     <div class="container">
+        <!-- Левая панель: Цели -->
         <div class="sidebar">
             <h2>🎯 Мои Цели</h2>
             <form id="goal-form">
@@ -17,6 +19,8 @@
             </form>
             <div id="goals-list" class="goals-list"></div>
         </div>
+
+        <!-- Правая панель: Задачи -->
         <div class="main-content">
             <div id="no-selection" class="placeholder">
                 <h3>Выберите цель слева, чтобы управлять её задачами.</h3>
@@ -31,18 +35,16 @@
             </div>
         </div>
     </div>
+
     <script>
-
-
-        // Стандартный относительный путь. Nginx на порту 80 сам проксирует это в бэкенд
-        const API_URL = '/api';
-
-
-
+       // Самый надежный способ: если мы открыты в Docker-контейнере тестера или на порту 80,
+// используем прокси /api, иначе стучимся на стандартный порт FastAPI 8000
+    const API_URL = (window.location.port === '8000') ? 'http://localhost:8000/api' : '/api';
 
 
         let selectedGoalId = null;
 
+        // Элементы DOM
         const goalForm = document.getElementById('goal-form');
         const goalsList = document.getElementById('goals-list');
         const taskForm = document.getElementById('task-form');
@@ -51,88 +53,81 @@
         const noSelection = document.getElementById('no-selection');
         const selectedGoalTitle = document.getElementById('selected-goal-title');
 
+        // Загрузка целей при старте
         document.addEventListener('DOMContentLoaded', fetchGoals);
 
-        async function fetchGoals() {
-            const res = await fetch(`${API_URL}/goals`);
-            const goals = await res.json();
-            goalsList.innerHTML = '';
-            
-            goals.forEach(goal => {
-                const totalTasks = goal.tasks ? goal.tasks.length : 0;
-                const completedTasks = goal.tasks ? goal.tasks.filter(t => t.is_completed).length : 0;
-                const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+        // Получение целей
+        // Получение целей и расчет прогресса
+async function fetchGoals() {
+    const res = await fetch(`${API_URL}/goals`);
+    const goals = await res.json();
+    goalsList.innerHTML = '';
 
-                const goalEl = document.createElement('div');
-                goalEl.className = `goal-item \${selectedGoalId === goal.id ? 'active' : ''}`;
-                
-                goalEl.innerHTML = `
-                    <div style="display: flex; justify-content: space-between; align-items: flex-start;">
-                        <h3 style="margin: 0;">\${goal.title}</h3>
-                        <button class="delete-btn" data-id="\${goal.id}" style="padding: 2px 8px; background: #dc3545; font-size: 12px; margin: 0; color: white; border: none; cursor: pointer; border-radius: 4px;">&times;</button>
-                    </div>
-                    <p>\${goal.description || ''}</p>
-                    <div class="progress-container">
-                        <div class="progress-bar" style="width: \${progressPercent}%"></div>
-                    </div>
-                    <span class="progress-text">\${progressPercent}% (\${completedTasks}/\${totalTasks})</span>
-                `;
-                
-                const deleteBtn = goalEl.querySelector('.delete-btn');
-                deleteBtn.addEventListener('click', async (e) => {
-                    e.stopPropagation();
-                    if (confirm('Вы уверены, что хотите удалить эту цель и все её задачи?')) {
-                        await fetch(`\${API_URL}/goals/\${goal.id}`, { method: 'DELETE' });
-                        if (selectedGoalId === goal.id) {
-                            selectedGoalId = null;
-                            tasksContainer.style.display = 'none';
-                            noSelection.style.display = 'block';
-                        }
-                        fetchGoals();
-                    }
-                });
+    goals.forEach(goal => {
+        // Вычисляем процент выполнения задач внутри цели
+        const totalTasks = goal.tasks ? goal.tasks.length : 0;
+        const completedTasks = goal.tasks ? goal.tasks.filter(t => t.is_completed).length : 0;
+        const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-                goalEl.addEventListener('click', () => selectGoal(goal));
-                goalsList.appendChild(goalEl);
-            });
-        }
+        const goalEl = document.createElement('div');
+        goalEl.className = `goal-item ${selectedGoalId === goal.id ? 'active' : ''}`;
 
-        function goalFormSubmit(e) {
+        // Добавляем HTML-структуру прогресс-бара
+        goalEl.innerHTML = `
+            <h3>${goal.title}</h3>
+            <p>${goal.description || ''}</p>
+            <div class="progress-container">
+                <div class="progress-bar" style="width: ${progressPercent}%"></div>
+            </div>
+            <span class="progress-text">${progressPercent}% (${completedTasks}/${totalTasks})</span>
+        `;
+
+        goalEl.addEventListener('click', () => selectGoal(goal));
+        goalsList.appendChild(goalEl);
+    });
+}
+
+
+        // Создание цели
+        goalForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const title = document.getElementById('goal-title').value;
             const description = document.getElementById('goal-desc').value;
-            fetch(`\${API_URL}/goals`, {
+
+            await fetch(`${API_URL}/goals`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ title, description })
-            }).then(() => {
-                goalForm.reset();
-                fetchGoals();
             });
-        }
-        goalForm.addEventListener('submit', goalFormSubmit);
 
+            goalForm.reset();
+            fetchGoals();
+        });
+
+        // Выбор цели
         function selectGoal(goal) {
             selectedGoalId = goal.id;
-            selectedGoalTitle.innerText = `📝 Задачи для: \${goal.title}`;
-            
+            selectedGoalTitle.innerText = `📝 Задачи для: ${goal.title}`;
+
+            // Подсветка активной цели
             document.querySelectorAll('.goal-item').forEach(el => el.classList.remove('active'));
-            fetchGoals();
+            fetchGoals(); // Перерисует с активным классом
 
             noSelection.style.display = 'none';
             tasksContainer.style.display = 'block';
             fetchTasks(goal.id);
         }
 
+        // Получение задач для выбранной цели
         async function fetchTasks(goalId) {
-            const res = await fetch(`\${API_URL}/goals/\${goalId}/tasks`);
+            const res = await fetch(`${API_URL}/goals/${goalId}/tasks`);
             const tasks = await res.json();
             tasksList.innerHTML = '';
 
             tasks.forEach(task => {
                 const li = document.createElement('li');
                 li.className = 'task-item';
-                
+
                 const checkbox = document.createElement('input');
                 checkbox.type = 'checkbox';
                 checkbox.checked = task.is_completed;
@@ -148,11 +143,12 @@
             });
         }
 
+        // Создание задачи
         taskForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const title = document.getElementById('task-title').value;
 
-            await fetch(`\${API_URL}/goals/\${selectedGoalId}/tasks`, {
+            await fetch(`${API_URL}/goals/${selectedGoalId}/tasks`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ title })
@@ -160,17 +156,18 @@
 
             document.getElementById('task-title').value = '';
             fetchTasks(selectedGoalId);
-            fetchGoals();
+            fetchGoals(); // Перерисовываем прогресс слева
         });
 
+        // Переключение статуса задачи
         async function toggleTask(task) {
-            await fetch(`\${API_URL}/tasks/\${task.id}`, {
+            await fetch(`${API_URL}/tasks/${task.id}`, {
                 method: 'PATCH',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ is_completed: !task.is_completed })
             });
             fetchTasks(selectedGoalId);
-            fetchGoals();
+            fetchGoals(); // Перерисовываем прогресс слева
         }
     </script>
 </body>

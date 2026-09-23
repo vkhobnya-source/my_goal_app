@@ -15,5 +15,6 @@ services:
       - backend
     restart: always
 
+
 volumes:
   goal_db_data:
