@@ -91,6 +91,18 @@ button:hover {
     border-color: #ced4da;
 }
 
+.goal-row {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 10px;
+}
+
+.goal-main {
+    flex: 1;
+    min-width: 0;
+}
+
 .goal-item h3 {
     margin: 0 0 5px 0;
 }
@@ -99,6 +111,25 @@ button:hover {
     margin: 0;
     color: #666;
     font-size: 14px;
+}
+
+.delete-btn {
+    background: #dc3545;
+    color: #fff;
+    border: none;
+    border-radius: 4px;
+    padding: 6px 10px;
+    font-size: 12px;
+    cursor: pointer;
+    flex-shrink: 0;
+}
+
+.delete-btn:hover {
+    background: #c82333;
+}
+
+.task-delete-btn {
+    margin-left: auto;
 }
 
 .placeholder {

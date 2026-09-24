@@ -72,18 +72,30 @@ async function fetchGoals() {
         const goalEl = document.createElement('div');
         goalEl.className = `goal-item ${selectedGoalId === goal.id ? 'active' : ''}`;
 
-        // Добавляем HTML-структуру прогресс-бара
-        goalEl.innerHTML = `
-            <h3>${goal.title}</h3>
-            <p>${goal.description || ''}</p>
-            <div class="progress-container">
-                <div class="progress-bar" style="width: ${progressPercent}%"></div>
+    goalEl.innerHTML = `
+        <div class="goal-row">
+            <div class="goal-main" data-goal-id="${goal.id}">
+                <h3>${goal.title}</h3>
+                <p>${goal.description || ''}</p>
+                <div class="progress-container">
+                    <div class="progress-bar" style="width: ${progressPercent}%"></div>
+                </div>
+                <span class="progress-text">${progressPercent}% (${completedTasks}/${totalTasks})</span>
             </div>
-            <span class="progress-text">${progressPercent}% (${completedTasks}/${totalTasks})</span>
-        `;
+            <button type="button" class="delete-btn danger-btn" data-goal-id="${goal.id}">Удалить</button>
+        </div>
+    `;
 
-        goalEl.addEventListener('click', () => selectGoal(goal));
-        goalsList.appendChild(goalEl);
+    const goalMain = goalEl.querySelector('.goal-main');
+    goalMain.addEventListener('click', () => selectGoal(goal));
+
+    const deleteBtn = goalEl.querySelector('.delete-btn');
+    deleteBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        deleteGoal(goal.id);
+    });
+
+    goalsList.appendChild(goalEl);
     });
 }
 
@@ -137,8 +149,15 @@ async function fetchGoals() {
                 span.innerText = task.title;
                 if (task.is_completed) span.className = 'completed';
 
+                const deleteButton = document.createElement('button');
+                deleteButton.type = 'button';
+                deleteButton.className = 'delete-btn task-delete-btn';
+                deleteButton.innerText = 'Удалить';
+                deleteButton.addEventListener('click', () => deleteTask(task.id));
+
                 li.appendChild(checkbox);
                 li.appendChild(span);
+                li.appendChild(deleteButton);
                 tasksList.appendChild(li);
             });
         }
@@ -158,6 +177,32 @@ async function fetchGoals() {
             fetchTasks(selectedGoalId);
             fetchGoals(); // Перерисовываем прогресс слева
         });
+
+        async function deleteGoal(goalId) {
+            await fetch(`${API_URL}/goals/${goalId}`, {
+                method: 'DELETE'
+            });
+
+            if (selectedGoalId === goalId) {
+                selectedGoalId = null;
+                tasksContainer.style.display = 'none';
+                noSelection.style.display = 'block';
+            }
+
+            fetchGoals();
+            if (selectedGoalId === null) {
+                tasksList.innerHTML = '';
+            }
+        }
+
+        async function deleteTask(taskId) {
+            await fetch(`${API_URL}/tasks/${taskId}`, {
+                method: 'DELETE'
+            });
+
+            fetchTasks(selectedGoalId);
+            fetchGoals();
+        }
 
         // Переключение статуса задачи
         async function toggleTask(task) {
