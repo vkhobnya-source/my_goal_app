@@ -1,5 +1,5 @@
 services:
-  db:
+  db-prod:
     image: postgres:16-alpine
     environment:
       POSTGRES_DB: goals
@@ -8,9 +8,27 @@ services:
     ports:
       - "5432:5432"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - postgres_prod_data:/var/lib/postgresql/data
     healthcheck:
       test: ["CMD-SHELL", "pg_isready -U postgres -d goals"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: always
+
+  db-test:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: goals_test
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5433:5432"
+    volumes:
+      - postgres_test_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d goals_test"]
       interval: 5s
       timeout: 5s
       retries: 10
@@ -22,9 +40,9 @@ services:
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/goals
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db-prod:5432/goals
     depends_on:
-      db:
+      db-prod:
         condition: service_healthy
     restart: always
 
@@ -37,4 +55,5 @@ services:
     restart: always
 
 volumes:
-  postgres_data:
+  postgres_prod_data:
+  postgres_test_data:
