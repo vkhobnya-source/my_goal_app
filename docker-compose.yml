@@ -1,10 +1,31 @@
 services:
+  db:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: goals
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d goals"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+      start_period: 10s
+    restart: always
+
   backend:
     build: ./backend
     ports:
       - "8000:8000"
-    volumes:
-      - goal_db_data:/data
+    environment:
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db:5432/goals
+    depends_on:
+      db:
+        condition: service_healthy
     restart: always
 
   frontend:
@@ -15,6 +36,5 @@ services:
       - backend
     restart: always
 
-
 volumes:
-  goal_db_data:
+  postgres_data:
