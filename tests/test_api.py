@@ -1,3 +1,8 @@
+import json
+
+from backend.app import main
+
+
 def test_create_and_get_goal(client):
     # 1. Создаем цель
     response = client.post(
@@ -64,3 +69,50 @@ def test_delete_goal_cascades_to_tasks(client):
     assert client.get("/api/goals").json() == []
     assert client.get(f"/api/goals/{goal_id}/tasks").json() == []
     assert client.delete(f"/api/tasks/{task_id}").status_code == 404
+
+
+def test_analyze_goal_returns_proposed_tasks(client, monkeypatch):
+    goal_res = client.post(
+        "/api/goals",
+        json={"title": "Подготовиться к марафону", "description": "Пробежать 42 км"},
+    )
+    goal_id = goal_res.json()["id"]
+    response_body = {
+        "choices": [
+            {
+                "message": {
+                    "content": json.dumps(
+                        {
+                            "analysis": "Нужно постепенно развить выносливость.",
+                            "proposed_tasks": [
+                                "Составить план тренировок",
+                                "Провести легкую пробежку",
+                            ],
+                        }
+                    )
+                }
+            }
+        ]
+    }
+
+    class FakeResponse:
+        def __enter__(self):
+            return self
+
+        def __exit__(self, exc_type, exc_value, traceback):
+            return False
+
+        def read(self):
+            return json.dumps(response_body).encode("utf-8")
+
+    monkeypatch.setenv("OPENAI_API_KEY", "test-key")
+    monkeypatch.setattr(main, "urlopen", lambda request, timeout: FakeResponse())
+
+    response = client.post(f"/api/goals/{goal_id}/analyze")
+
+    assert response.status_code == 200
+    assert response.json()["analysis"] == "Нужно постепенно развить выносливость."
+    assert response.json()["proposed_tasks"] == [
+        "Составить план тренировок",
+        "Провести легкую пробежку",
+    ]

@@ -39,3 +39,8 @@ class Goal(GoalBase):
 
     # Новый стандарт Pydantic v2 вместо class Config
     model_config = ConfigDict(from_attributes=True)
+
+
+class GoalAnalysis(BaseModel):
+    analysis: str
+    proposed_tasks: List[str]

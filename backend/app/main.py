@@ -1,3 +1,8 @@
+import json
+import os
+from urllib.error import HTTPError, URLError
+from urllib.request import Request, urlopen
+
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
@@ -36,6 +41,8 @@ def get_tasks(goal_id: int, db: Session = Depends(database.get_db)):
 
 @app.post("/api/goals/{goal_id}/tasks", response_model=schemas.Task)
 def create_task(goal_id: int, task: schemas.TaskCreate, db: Session = Depends(database.get_db)):
+    if not db.query(models.Goal).filter(models.Goal.id == goal_id).first():
+        raise HTTPException(status_code=404, detail="Goal not found")
     db_task = models.Task(**task.model_dump(), goal_id=goal_id)
     db.add(db_task)
     db.commit()
@@ -69,3 +76,90 @@ def delete_goal(goal_id: int, db: Session = Depends(database.get_db)):
     db.delete(db_goal)
     db.commit()
     return db_goal
+
+
+@app.post("/api/goals/{goal_id}/analyze", response_model=schemas.GoalAnalysis)
+def analyze_goal(goal_id: int, db: Session = Depends(database.get_db)):
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
+
+    api_key = os.getenv("OPENAI_API_KEY")
+    if not api_key:
+        raise HTTPException(
+            status_code=503,
+            detail="AI analysis is not configured. Set OPENAI_API_KEY.",
+        )
+
+    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    prompt = (
+        "Analyze this personal goal and propose practical, ordered tasks to reach it. "
+        "Return strict JSON with exactly two fields: "
+        '"analysis" (a concise explanation) and '
+        '"proposed_tasks" (an array of 3 to 7 short task strings). '
+        "Do not include markdown.\n\n"
+        f"Goal: {goal.title}\n"
+        f"Description: {goal.description or 'No description provided'}"
+    )
+    payload = {
+        "model": model,
+        "messages": [
+            {
+                "role": "system",
+                "content": "You are a practical goal-planning assistant.",
+            },
+            {"role": "user", "content": prompt},
+        ],
+        "response_format": {"type": "json_object"},
+        "temperature": 0.2,
+    }
+    request = Request(
+        os.getenv("OPENAI_API_URL", "https://api.openai.com/v1/chat/completions"),
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "Authorization": f"Bearer {api_key}",
+            "Content-Type": "application/json",
+        },
+        method="POST",
+    )
+
+    try:
+        with urlopen(request, timeout=45) as response:
+            result = json.loads(response.read().decode("utf-8"))
+    except HTTPError as error:
+        raise HTTPException(
+            status_code=502,
+            detail=f"AI provider request failed with status {error.code}.",
+        ) from error
+    except URLError as error:
+        raise HTTPException(
+            status_code=502,
+            detail="AI provider could not be reached.",
+        ) from error
+    except (TimeoutError, json.JSONDecodeError) as error:
+        raise HTTPException(
+            status_code=502,
+            detail="AI provider returned an invalid response.",
+        ) from error
+
+    try:
+        content = result["choices"][0]["message"]["content"]
+        analysis = json.loads(content)
+        proposed_tasks = analysis["proposed_tasks"]
+        if (
+            not isinstance(analysis["analysis"], str)
+            or not isinstance(proposed_tasks, list)
+            or not proposed_tasks
+            or not all(isinstance(task, str) and task.strip() for task in proposed_tasks)
+        ):
+            raise ValueError
+    except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as error:
+        raise HTTPException(
+            status_code=502,
+            detail="AI provider returned an invalid goal analysis.",
+        ) from error
+
+    return {
+        "analysis": analysis["analysis"].strip(),
+        "proposed_tasks": [task.strip() for task in proposed_tasks],
+    }

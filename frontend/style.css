@@ -68,6 +68,48 @@ button:hover {
     background: #0069d9;
 }
 
+.tasks-header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+}
+
+#analyze-goal-button {
+    background: #6f42c1;
+    font-size: 12px;
+}
+
+#analyze-goal-button:hover {
+    background: #59359a;
+}
+
+.goal-analysis {
+    margin: 12px 0;
+    padding: 12px;
+    border: 1px solid #d8c8f0;
+    border-radius: 5px;
+    background: #f7f2fc;
+}
+
+.suggested-tasks {
+    padding-left: 20px;
+}
+
+.suggested-tasks li {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 10px;
+    margin: 8px 0;
+}
+
+.suggested-tasks button {
+    padding: 5px 8px;
+    font-size: 12px;
+    background: #6f42c1;
+}
+
 .goals-list {
     display: flex;
     flex-direction: column;
