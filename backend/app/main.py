@@ -127,9 +127,18 @@ def analyze_goal(goal_id: int, db: Session = Depends(database.get_db)):
         with urlopen(request, timeout=45) as response:
             result = json.loads(response.read().decode("utf-8"))
     except HTTPError as error:
+        provider_detail = ""
+        try:
+            error_body = json.loads(error.read().decode("utf-8"))
+            provider_detail = error_body.get("error", {}).get("message", "")
+        except (AttributeError, UnicodeDecodeError, json.JSONDecodeError):
+            pass
+        detail = f"AI provider request failed with status {error.code}."
+        if provider_detail:
+            detail = f"{detail} {provider_detail}"
         raise HTTPException(
             status_code=502,
-            detail=f"AI provider request failed with status {error.code}.",
+            detail=detail,
         ) from error
     except URLError as error:
         raise HTTPException(
