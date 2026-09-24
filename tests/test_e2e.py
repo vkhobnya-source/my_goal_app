@@ -129,3 +129,54 @@ def test_goal_progress_bar_updates(driver):
     progress_text_after = target_goal.find_element(By.CLASS_NAME, "progress-text").text
     assert "100%" in progress_text_after, f"Ожидалось 100%, но получили: {progress_text_after}"
 
+
+def test_delete_goal_and_task(driver):
+    base_url = "http://frontend" if os.environ.get("CHROME_BIN") else "http://localhost"
+    driver.get(base_url)
+
+    goal_name = f"Цель для удаления {time.time_ns()}"
+    task_name = f"Задача для удаления {time.time_ns()}"
+
+    title_input = driver.find_element(By.ID, "goal-title")
+    title_input.send_keys(goal_name)
+    driver.find_element(By.XPATH, "//form[@id='goal-form']/button").click()
+    time.sleep(1)
+
+    goal_item = next(
+        item for item in driver.find_elements(By.CLASS_NAME, "goal-item")
+        if goal_name in item.text
+    )
+    goal_item.find_element(By.CLASS_NAME, "goal-main").click()
+    time.sleep(0.5)
+
+    task_input = driver.find_element(By.ID, "task-title")
+    task_input.send_keys(task_name)
+    driver.find_element(By.XPATH, "//form[@id='task-form']/button").click()
+    time.sleep(0.5)
+
+    task_item = next(
+        item for item in driver.find_elements(By.CLASS_NAME, "task-item")
+        if task_name in item.text
+    )
+    task_item.find_element(By.CLASS_NAME, "task-delete-btn").click()
+    time.sleep(0.5)
+
+    remaining_tasks = [
+        item for item in driver.find_elements(By.CLASS_NAME, "task-item")
+        if task_name in item.text
+    ]
+    assert remaining_tasks == []
+
+    goal_item = next(
+        item for item in driver.find_elements(By.CLASS_NAME, "goal-item")
+        if goal_name in item.text
+    )
+    goal_item.find_element(By.CLASS_NAME, "delete-btn").click()
+    time.sleep(0.5)
+
+    remaining_goals = [
+        item for item in driver.find_elements(By.CLASS_NAME, "goal-item")
+        if goal_name in item.text
+    ]
+    assert remaining_goals == []
+    assert driver.find_element(By.ID, "tasks-container").is_displayed() is False
