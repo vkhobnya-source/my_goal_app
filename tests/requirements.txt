@@ -6,4 +6,4 @@ sqlalchemy
 fastapi
 pydantic
 httpx
-
+playwright
