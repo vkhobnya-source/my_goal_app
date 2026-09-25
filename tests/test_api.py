@@ -105,7 +105,7 @@ def test_analyze_goal_returns_proposed_tasks(client, monkeypatch):
         def read(self):
             return json.dumps(response_body).encode("utf-8")
 
-    monkeypatch.setenv("DEEPSEEK_API_KEY", "test-key")
+    monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setattr(main, "urlopen", lambda request, timeout: FakeResponse())
 
     response = client.post(f"/api/goals/{goal_id}/analyze")
