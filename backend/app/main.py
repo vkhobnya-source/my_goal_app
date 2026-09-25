@@ -84,14 +84,14 @@ def analyze_goal(goal_id: int, db: Session = Depends(database.get_db)):
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
 
-    api_key = os.getenv("OPENAI_API_KEY")
+    api_key = os.getenv("DEEPSEEK_API_KEY")
     if not api_key:
         raise HTTPException(
             status_code=503,
-            detail="AI analysis is not configured. Set OPENAI_API_KEY.",
+            detail="AI analysis is not configured. Set DEEPSEEK_API_KEY.",
         )
 
-    model = os.getenv("OPENAI_MODEL", "gpt-4o-mini")
+    model = os.getenv("DEEPSEEK_MODEL", "deepseek-chat")
     prompt = (
         "Analyze this personal goal and propose practical, ordered tasks to reach it. "
         "Return strict JSON with exactly two fields: "
@@ -114,7 +114,10 @@ def analyze_goal(goal_id: int, db: Session = Depends(database.get_db)):
         "temperature": 0.2,
     }
     request = Request(
-        os.getenv("OPENAI_API_URL", "https://api.openai.com/v1/chat/completions"),
+        os.getenv(
+            "DEEPSEEK_API_URL",
+            "https://api.deepseek.com/chat/completions",
+        ),
         data=json.dumps(payload).encode("utf-8"),
         headers={
             "Authorization": f"Bearer {api_key}",
