@@ -3,6 +3,7 @@ import os
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
+from sqlalchemy.pool import StaticPool
 
 # Добавляем корень проекта в пути
 sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')))
@@ -13,11 +14,12 @@ from backend.app.main import app, hash_password
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",
-    "postgresql+psycopg://postgres:postgres@localhost:5433/goals_test",
+    "sqlite://",
 )
 engine = create_engine(
     TEST_DATABASE_URL,
     connect_args={"check_same_thread": False} if TEST_DATABASE_URL.startswith("sqlite") else {},
+    poolclass=StaticPool if TEST_DATABASE_URL.startswith("sqlite") else None,
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 

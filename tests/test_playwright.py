@@ -1,22 +1,54 @@
 import os
 import time
+from uuid import uuid4
+from urllib.parse import urlsplit, urlunsplit
 
-from playwright.sync_api import Page, expect, sync_playwright
+from playwright.sync_api import expect, sync_playwright
 
 
-BASE_URL = "http://frontend" if os.environ.get("CHROME_BIN") else "http://localhost"
+BASE_URL = os.getenv(
+    "PLAYWRIGHT_BASE_URL",
+    "http://frontend" if os.environ.get("CHROME_BIN") else "http://localhost",
+)
+API_URL = os.getenv("PLAYWRIGHT_API_URL")
+TEST_EMAIL = f"playwright-{uuid4().hex}@example.test"
+TEST_PASSWORD = f"pw-{uuid4().hex}"
+test_user_registered = False
 
 
 def open_page():
+    global test_user_registered
+
     playwright = sync_playwright().start()
     browser = playwright.chromium.launch(headless=True)
     page = browser.new_page()
+    if API_URL:
+        api_url = urlsplit(API_URL)
+
+        def route_api(route):
+            request_url = urlsplit(route.request.url)
+            route.continue_(
+                url=urlunsplit(
+                    (
+                        api_url.scheme,
+                        api_url.netloc,
+                        request_url.path,
+                        request_url.query,
+                        request_url.fragment,
+                    )
+                )
+            )
+
+        page.route("**/api/**", route_api)
     page.goto(BASE_URL)
     if page.locator("#auth-view").is_visible():
-        page.locator("#auth-email").fill("test@test.ts")
-        page.locator("#auth-password").fill("test")
+        if not test_user_registered:
+            page.locator("#auth-mode-toggle").click()
+        page.locator("#auth-email").fill(TEST_EMAIL)
+        page.locator("#auth-password").fill(TEST_PASSWORD)
         page.locator("#auth-submit").click()
         expect(page.locator("#app-view")).to_be_visible()
+        test_user_registered = True
     return playwright, browser, page
 
 
