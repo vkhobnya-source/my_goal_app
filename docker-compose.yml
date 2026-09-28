@@ -35,6 +35,26 @@ services:
       start_period: 10s
     restart: always
 
+  backup-prod-db:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: db-prod
+      PGPORT: 5432
+      PGDATABASE: goals
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      BACKUP_DIR: /backups
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - postgres_backup_data:/backups
+      - ./backup/backup-prod-db.sh:/usr/local/bin/backup-prod-db.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/backup-prod-db.sh"]
+    depends_on:
+      db-prod:
+        condition: service_healthy
+    restart: always
+
   backend:
     build: ./backend
     ports:
@@ -61,3 +81,4 @@ services:
 volumes:
   postgres_prod_data:
   postgres_test_data:
+  postgres_backup_data:
