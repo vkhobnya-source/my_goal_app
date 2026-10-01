@@ -21,7 +21,7 @@ def test_goal_task_progress_and_deletion():
     task_name = f"Playwright task {time.time_ns()}"
 
     try:
-        expect(page).to_have_title("Трекер Целей и Задач")
+        expect(page).to_have_title("Goals and Tasks Tracker")
         page.locator("#goal-title").fill(goal_name)
         page.locator("#goal-desc").fill("Created by Playwright")
         page.locator("#goal-form button").click()
@@ -83,7 +83,7 @@ def test_ai_suggestions_can_be_added_as_tasks():
         expect(suggested).to_be_visible()
 
         suggested.locator("button").click()
-        expect(suggested.locator("button")).to_have_text("Добавлено")
+        expect(suggested.locator("button")).to_have_text("Added")
         expect(page.locator(".task-item", has_text=suggested_task)).to_be_visible()
 
         goal.locator(".delete-btn").click()

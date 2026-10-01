@@ -37,7 +37,7 @@ def test_frontend_flow(driver):
     driver.get(base_url)
 
     # Проверяем заголовок страницы
-    assert "Трекер Целей и Задач" in driver.title
+    assert "Goals and Tasks Tracker" in driver.title
 
     # 2. Находим поля формы создания цели и заполняем их
     title_input = driver.find_element(By.ID, "goal-title")
@@ -83,7 +83,7 @@ def test_goal_progress_bar_updates(driver):
     # Даем бэкенду и фронтенду в докере гарантированно связаться по сети
     time.sleep(3)
 
-    assert "Трекер Целей и Задач" in driver.title
+    assert "Goals and Tasks Tracker" in driver.title
     # 2. Создаем новую цель для проверки прогресса
     title_input = driver.find_element(By.ID, "goal-title")
     submit_button = driver.find_element(By.XPATH, "//form[@id='goal-form']/button")

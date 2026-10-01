@@ -44,3 +44,8 @@ MANIFEST
 # --- Файлы конфигурации и секреты (пароли, токены) ---
 .env
 .env.*
+
+# --- Node/Cypress ---
+node_modules/
+cypress/screenshots/
+cypress/videos/
