@@ -1,5 +1,11 @@
-import sys
 import os
+import sys
+import subprocess
+import time
+from pathlib import Path
+from urllib.error import URLError
+from urllib.request import urlopen
+
 import pytest
 from sqlalchemy import create_engine
 from sqlalchemy.orm import sessionmaker
@@ -11,6 +17,59 @@ sys.path.insert(0, os.path.abspath(os.path.join(os.path.dirname(__file__), '..')
 from backend.app.database import Base, get_db
 from backend.app.models import Goal, Task
 from backend.app.main import app
+
+PROJECT_ROOT = Path(__file__).resolve().parents[1]
+
+
+@pytest.fixture(scope="session")
+def e2e_stack():
+    custom_url = os.getenv("E2E_BASE_URL")
+    in_container = os.getenv("CHROME_BIN")
+
+    if not custom_url and not in_container:
+        command = [
+            "docker",
+            "compose",
+            "-f",
+            "docker-compose.yml",
+            "-f",
+            "docker-compose.e2e.yml",
+            "up",
+            "-d",
+            "--build",
+            "backend-e2e",
+            "frontend-e2e",
+        ]
+        result = subprocess.run(
+            command,
+            cwd=PROJECT_ROOT,
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        if result.returncode:
+            raise RuntimeError(
+                "Could not start the isolated E2E stack:\n"
+                f"{result.stdout}\n{result.stderr}"
+            )
+
+    base_url = custom_url or (
+        "http://frontend-e2e"
+        if in_container
+        else f"http://localhost:{os.getenv('E2E_FRONTEND_PORT', '8081')}"
+    )
+    deadline = time.monotonic() + 60
+    while True:
+        try:
+            with urlopen(base_url, timeout=2):
+                break
+        except (OSError, URLError) as error:
+            if time.monotonic() >= deadline:
+                raise RuntimeError(
+                    f"E2E frontend did not become available at {base_url}"
+                ) from error
+            time.sleep(1)
+
 
 TEST_DATABASE_URL = os.getenv(
     "TEST_DATABASE_URL",

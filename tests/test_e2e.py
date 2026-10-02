@@ -1,6 +1,7 @@
 import os
 import pytest
 import time
+import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
@@ -9,8 +10,11 @@ from webdriver_manager.chrome import ChromeDriverManager
 
 E2E_BASE_URL = os.environ.get(
     "E2E_BASE_URL",
-    "http://frontend-e2e" if os.environ.get("CHROME_BIN") else "http://localhost:8081",
+    "http://frontend-e2e"
+    if os.environ.get("CHROME_BIN")
+    else f"http://localhost:{os.environ.get('E2E_FRONTEND_PORT', '8081')}",
 )
+pytestmark = pytest.mark.usefixtures("e2e_stack")
 
 
 @pytest.fixture(scope="module")

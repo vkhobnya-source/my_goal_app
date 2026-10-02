@@ -1,20 +1,31 @@
 import os
 import time
 
+import pytest
 from playwright.sync_api import Page, expect, sync_playwright
 
 
 BASE_URL = os.environ.get(
     "E2E_BASE_URL",
-    "http://frontend-e2e" if os.environ.get("CHROME_BIN") else "http://localhost:8081",
+    "http://frontend-e2e"
+    if os.environ.get("CHROME_BIN")
+    else f"http://localhost:{os.environ.get('E2E_FRONTEND_PORT', '8081')}",
 )
+pytestmark = pytest.mark.usefixtures("e2e_stack")
 
 
 def open_page():
     playwright = sync_playwright().start()
-    browser = playwright.chromium.launch(headless=True)
-    page = browser.new_page()
-    page.goto(BASE_URL)
+    browser = None
+    try:
+        browser = playwright.chromium.launch(headless=True)
+        page = browser.new_page()
+        page.goto(BASE_URL)
+    except Exception:
+        if browser is not None:
+            browser.close()
+        playwright.stop()
+        raise
     return playwright, browser, page
 
 
