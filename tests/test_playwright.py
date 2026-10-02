@@ -4,7 +4,10 @@ import time
 from playwright.sync_api import Page, expect, sync_playwright
 
 
-BASE_URL = "http://frontend" if os.environ.get("CHROME_BIN") else "http://localhost"
+BASE_URL = os.environ.get(
+    "E2E_BASE_URL",
+    "http://frontend-e2e" if os.environ.get("CHROME_BIN") else "http://localhost:8081",
+)
 
 
 def open_page():

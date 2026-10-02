@@ -7,6 +7,12 @@ from selenium.webdriver.common.by import By
 from webdriver_manager.chrome import ChromeDriverManager
 
 
+E2E_BASE_URL = os.environ.get(
+    "E2E_BASE_URL",
+    "http://frontend-e2e" if os.environ.get("CHROME_BIN") else "http://localhost:8081",
+)
+
+
 @pytest.fixture(scope="module")
 def driver():
     options = webdriver.ChromeOptions()
@@ -32,9 +38,7 @@ def driver():
 
 
 def test_frontend_flow(driver):
-    # Если мы в Docker, фронтенд доступен по имени контейнера 'frontend', иначе 'localhost'
-    base_url = "http://frontend" if os.environ.get("CHROME_BIN") else "http://localhost"
-    driver.get(base_url)
+    driver.get(E2E_BASE_URL)
 
     # Проверяем заголовок страницы
     assert "Goals and Tasks Tracker" in driver.title
@@ -44,7 +48,8 @@ def test_frontend_flow(driver):
     desc_input = driver.find_element(By.ID, "goal-desc")
     submit_button = driver.find_element(By.XPATH, "//form[@id='goal-form']/button")
 
-    title_input.send_keys("Авто-Цель Selenium")
+    goal_name = f"Авто-Цель Selenium {time.time_ns()}"
+    title_input.send_keys(goal_name)
     desc_input.send_keys("Создано автоматически во время теста")
     submit_button.click()
 
@@ -56,7 +61,7 @@ def test_frontend_flow(driver):
     # Находим созданную цель по тексту и кликаем на нее
     target_goal = None
     for item in goal_items:
-        if "Авто-Цель Selenium" in item.text:
+        if goal_name in item.text:
             target_goal = item
             break
 
@@ -78,8 +83,7 @@ def test_frontend_flow(driver):
 
 def test_goal_progress_bar_updates(driver):
     # 1. Открываем приложение
-    base_url = "http://frontend" if os.environ.get("CHROME_BIN") else "http://localhost"
-    driver.get(base_url)
+    driver.get(E2E_BASE_URL)
     # Даем бэкенду и фронтенду в докере гарантированно связаться по сети
     time.sleep(3)
 
@@ -88,7 +92,7 @@ def test_goal_progress_bar_updates(driver):
     title_input = driver.find_element(By.ID, "goal-title")
     submit_button = driver.find_element(By.XPATH, "//form[@id='goal-form']/button")
 
-    goal_name = "Цель для прогресс-бара"
+    goal_name = f"Цель для прогресс-бара {time.time_ns()}"
     title_input.send_keys(goal_name)
     submit_button.click()
     time.sleep(1)
@@ -131,8 +135,7 @@ def test_goal_progress_bar_updates(driver):
 
 
 def test_delete_goal_and_task(driver):
-    base_url = "http://frontend" if os.environ.get("CHROME_BIN") else "http://localhost"
-    driver.get(base_url)
+    driver.get(E2E_BASE_URL)
 
     goal_name = f"Цель для удаления {time.time_ns()}"
     task_name = f"Задача для удаления {time.time_ns()}"

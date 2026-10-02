@@ -15,7 +15,7 @@
 
 API-тесты запускаются командой `python -m pytest tests/test_api.py`. По умолчанию они используют изолированную SQLite-базу в памяти; при необходимости адрес тестовой базы можно задать через `TEST_DATABASE_URL`.
 
-Playwright-тесты (`python -m pytest tests/test_playwright.py`) требуют запущенный фронтенд и API. По умолчанию они обращаются к `http://localhost`; адреса можно переопределить переменными `PLAYWRIGHT_BASE_URL` и `PLAYWRIGHT_API_URL`. Тесты создают отдельную учётную запись и временные цели в базе целевого приложения, поэтому запускайте их только на локальном или тестовом окружении, не на рабочей базе.
+Браузерные E2E-тесты требуют отдельный тестовый стек. Запустите его командой `docker compose -f docker-compose.yml -f docker-compose.e2e.yml up -d --build backend-e2e frontend-e2e`, затем запустите `python -m pytest tests/test_e2e.py tests/test_playwright.py`. По умолчанию браузер обращается к `http://localhost:8081`; при необходимости адрес можно переопределить через `E2E_BASE_URL`. Тестовый backend использует временную SQLite-базу в отдельном контейнере и не подключается к рабочей базе. После тестов стек можно остановить командой `docker compose -f docker-compose.yml -f docker-compose.e2e.yml stop backend-e2e frontend-e2e`.
 
 В production настройте HTTPS и задайте `COOKIE_SECURE=true`, чтобы браузер отправлял cookie сессии только по защищенному соединению. По умолчанию эта настройка выключена для локального HTTP-запуска.
 

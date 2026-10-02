@@ -1,0 +1,26 @@
+services:
+  backend-e2e:
+    build: ./backend
+    environment:
+      DATABASE_URL: sqlite:////tmp/goals-e2e.db
+    tmpfs:
+      - /tmp
+    healthcheck:
+      test:
+        - CMD
+        - python
+        - -c
+        - "from urllib.request import urlopen; urlopen('http://127.0.0.1:8000/docs')"
+      interval: 2s
+      timeout: 3s
+      retries: 15
+
+  frontend-e2e:
+    build: ./frontend
+    ports:
+      - "${E2E_FRONTEND_PORT:-8081}:80"
+    volumes:
+      - ./frontend/default.e2e.conf:/etc/nginx/conf.d/default.conf:ro
+    depends_on:
+      backend-e2e:
+        condition: service_healthy
