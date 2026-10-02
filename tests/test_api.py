@@ -1,7 +1,5 @@
 import json
 
-from fastapi.testclient import TestClient
-
 from backend.app import main
 
 
@@ -104,8 +102,7 @@ def test_analyze_goal_returns_proposed_tasks(client, monkeypatch):
         def __exit__(self, exc_type, exc_value, traceback):
             return False
 
-        @staticmethod
-        def read():
+        def read(self):
             return json.dumps(response_body).encode("utf-8")
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
@@ -119,85 +116,3 @@ def test_analyze_goal_returns_proposed_tasks(client, monkeypatch):
         "Составить план тренировок",
         "Провести легкую пробежку",
     ]
-
-
-def test_authentication_and_session_lifecycle(client):
-    client.cookies.clear()
-    assert client.get("/api/goals").status_code == 401
-
-    registration = client.post(
-        "/api/auth/register",
-        json={"email": " New.User@example.com ", "password": "secure-password"},
-    )
-    assert registration.status_code == 201
-    assert registration.json()["email"] == "new.user@example.com"
-    assert client.cookies.get("goal_app_session")
-
-    assert client.post(
-        "/api/auth/register",
-        json={"email": "new.user@example.com", "password": "secure-password"},
-    ).status_code == 409
-
-    assert client.post("/api/auth/logout").status_code == 204
-    assert client.get("/api/auth/me").status_code == 401
-
-    login = client.post(
-        "/api/auth/login",
-        json={"email": "NEW.USER@example.com", "password": "secure-password"},
-    )
-    assert login.status_code == 200
-    assert login.json()["email"] == "new.user@example.com"
-
-
-def test_test_user_can_log_in_and_log_out(client):
-    client.cookies.clear()
-
-    login = client.post(
-        "/api/auth/login",
-        json={"email": "test@test.ts", "password": "test"},
-    )
-    assert login.status_code == 200
-    assert login.json()["email"] == "test@test.ts"
-    assert client.cookies.get("goal_app_session")
-    assert client.get("/api/auth/me").json()["email"] == "test@test.ts"
-    assert client.get("/api/goals").status_code == 200
-
-    assert client.post("/api/auth/logout").status_code == 204
-    assert client.get("/api/auth/me").status_code == 401
-
-    invalid_login = client.post(
-        "/api/auth/login",
-        json={"email": "test@test.ts", "password": "wrong"},
-    )
-    assert invalid_login.status_code == 401
-
-
-def test_users_cannot_access_each_others_goals_or_tasks(client):
-    goal_id = client.post(
-        "/api/goals",
-        json={"title": "Private goal"},
-    ).json()["id"]
-    task_id = client.post(
-        f"/api/goals/{goal_id}/tasks",
-        json={"title": "Private task"},
-    ).json()["id"]
-
-    other_client = TestClient(main.app)
-    registration = other_client.post(
-        "/api/auth/register",
-        json={"email": "other-user@example.com", "password": "another-password"},
-    )
-    assert registration.status_code == 201
-    assert other_client.get("/api/goals").json() == []
-    assert other_client.get(f"/api/goals/{goal_id}/tasks").json() == []
-    assert other_client.post(
-        f"/api/goals/{goal_id}/tasks",
-        json={"title": "Unauthorized task"},
-    ).status_code == 404
-    assert other_client.post(f"/api/goals/{goal_id}/analyze").status_code == 404
-    assert other_client.patch(
-        f"/api/tasks/{task_id}",
-        json={"is_completed": True},
-    ).status_code == 404
-    assert other_client.delete(f"/api/tasks/{task_id}").status_code == 404
-    assert other_client.delete(f"/api/goals/{goal_id}").status_code == 404

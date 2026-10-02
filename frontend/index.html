@@ -1,77 +1,54 @@
 <!DOCTYPE html>
-<html lang="ru">
+<html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Трекер Целей и Задач</title>
+    <title>Goals and Tasks Tracker</title>
     <link rel="stylesheet" href="style.css">
 </head>
 <body>
-    <section id="auth-view" class="auth-view">
-        <div class="auth-card">
-            <h1>🎯 Мои цели</h1>
-            <p id="auth-description">Войдите, чтобы продолжить.</p>
-            <form id="auth-form">
-                <input type="email" id="auth-email" placeholder="Электронная почта" autocomplete="email" required>
-                <input type="password" id="auth-password" placeholder="Пароль" autocomplete="current-password" minlength="1" maxlength="128" required>
-                <p id="auth-message" class="auth-message" role="alert" hidden></p>
-                <button type="submit" id="auth-submit">Войти</button>
-                <button type="button" id="auth-mode-toggle" class="auth-mode-toggle">Создать аккаунт</button>
-            </form>
-        </div>
-    </section>
-
-    <div id="app-view" hidden>
-        <header class="app-header">
-            <strong>Трекер целей и задач</strong>
-            <div class="account-controls">
-                <span id="user-email"></span>
-                <button type="button" id="logout-button">Выйти</button>
-            </div>
-        </header>
 
     <div class="container">
-        <!-- Левая панель: Цели -->
+        <!-- Left panel: Goals -->
         <div class="sidebar">
-            <h2>🎯 Мои Цели</h2>
+            <h2>🎯 My Goals</h2>
             <form id="goal-form">
-                <input type="text" id="goal-title" placeholder="Название цели..." required>
-                <textarea id="goal-desc" placeholder="Описание..."></textarea>
-                <button type="submit">Добавить цель</button>
+                <input type="text" id="goal-title" placeholder="Goal name..." required>
+                <textarea id="goal-desc" placeholder="Description..."></textarea>
+                <button type="submit">Add goal</button>
             </form>
             <div id="goals-list" class="goals-list"></div>
         </div>
 
-        <!-- Правая панель: Задачи -->
+        <!-- Right panel: Tasks -->
         <div class="main-content">
             <div id="no-selection" class="placeholder">
-                <h3>Выберите цель слева, чтобы управлять её задачами.</h3>
+                <h3>Select a goal on the left to manage its tasks.</h3>
             </div>
             <div id="tasks-container" class="tasks-container" style="display: none;">
                 <div class="tasks-header">
-                    <h2 id="selected-goal-title">📝 Задачи</h2>
-                    <button type="button" id="analyze-goal-button">✨ Предложить задачи</button>
+                    <h2 id="selected-goal-title">📝 Tasks</h2>
+                    <button type="button" id="analyze-goal-button">✨ Suggest tasks</button>
                 </div>
                 <div id="goal-analysis" class="goal-analysis" hidden></div>
                 <form id="task-form">
-                    <input type="text" id="task-title" placeholder="Что нужно сделать?" required>
-                    <button type="submit">Добавить</button>
+                    <input type="text" id="task-title" placeholder="What needs to be done?" required>
+                    <button type="submit">Add</button>
                 </form>
                 <ul id="tasks-list"></ul>
             </div>
         </div>
     </div>
-    </div>
 
     <script>
-       // Самый надежный способ: если мы открыты в Docker-контейнере тестера или на порту 80,
-// используем прокси /api, иначе стучимся на стандартный порт FastAPI 8000
+       // When running in the Docker test container or on port 80, use the /api
+// proxy; otherwise connect to the FastAPI server on port 8000.
     const API_URL = (window.location.port === '8000') ? 'http://localhost:8000/api' : '/api';
 
 
         let selectedGoalId = null;
 
-        // Элементы DOM
+        // DOM elements
         const goalForm = document.getElementById('goal-form');
         const goalsList = document.getElementById('goals-list');
         const taskForm = document.getElementById('task-form');
@@ -81,107 +58,18 @@
         const selectedGoalTitle = document.getElementById('selected-goal-title');
         const analyzeGoalButton = document.getElementById('analyze-goal-button');
         const goalAnalysis = document.getElementById('goal-analysis');
-        const authView = document.getElementById('auth-view');
-        const appView = document.getElementById('app-view');
-        const authForm = document.getElementById('auth-form');
-        const authMessage = document.getElementById('auth-message');
-        const authModeToggle = document.getElementById('auth-mode-toggle');
-        let authMode = 'login';
 
-        document.addEventListener('DOMContentLoaded', initializeAuth);
+        // Load goals on startup
+        document.addEventListener('DOMContentLoaded', fetchGoals);
 
-        async function initializeAuth() {
-            try {
-                const response = await fetch(`${API_URL}/auth/me`);
-                if (!response.ok) {
-                    if (response.status !== 401) {
-                        throw new Error('Не удалось подключиться к серверу.');
-                    }
-                    return;
-                }
-                showAuthenticatedApp(await response.json());
-            } catch (error) {
-                authMessage.hidden = false;
-                authMessage.innerText = error.message;
-            }
-        }
-
-        function showAuthenticatedApp(user) {
-            authView.hidden = true;
-            appView.hidden = false;
-            document.getElementById('user-email').innerText = user.email;
-            fetchGoals();
-        }
-
-        authModeToggle.addEventListener('click', () => {
-            authMode = authMode === 'login' ? 'register' : 'login';
-            document.getElementById('auth-description').innerText =
-                authMode === 'login' ? 'Войдите, чтобы продолжить.' : 'Создайте аккаунт для своих целей.';
-            document.getElementById('auth-submit').innerText =
-                authMode === 'login' ? 'Войти' : 'Зарегистрироваться';
-            authModeToggle.innerText =
-                authMode === 'login' ? 'Создать аккаунт' : 'У меня уже есть аккаунт';
-            document.getElementById('auth-password').autocomplete =
-                authMode === 'login' ? 'current-password' : 'new-password';
-            document.getElementById('auth-password').minLength =
-                authMode === 'login' ? 1 : 8;
-            document.getElementById('auth-password').placeholder =
-                authMode === 'login' ? 'Пароль' : 'Пароль (не менее 8 символов)';
-            authMessage.hidden = true;
-        });
-
-        authForm.addEventListener('submit', async (event) => {
-            event.preventDefault();
-            authMessage.hidden = true;
-            const submitButton = document.getElementById('auth-submit');
-            submitButton.disabled = true;
-            try {
-                const response = await fetch(`${API_URL}/auth/${authMode}`, {
-                    method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({
-                        email: document.getElementById('auth-email').value,
-                        password: document.getElementById('auth-password').value
-                    })
-                });
-                const result = await response.json();
-                if (!response.ok) {
-                    throw new Error(result.detail || 'Не удалось выполнить вход.');
-                }
-                authForm.reset();
-                showAuthenticatedApp(result);
-            } catch (error) {
-                authMessage.hidden = false;
-                authMessage.innerText = error.message;
-            } finally {
-                submitButton.disabled = false;
-            }
-        });
-
-        document.getElementById('logout-button').addEventListener('click', async () => {
-            try {
-                const response = await fetch(`${API_URL}/auth/logout`, { method: 'POST' });
-                if (!response.ok) {
-                    throw new Error('Не удалось выйти из аккаунта.');
-                }
-                selectedGoalId = null;
-                tasksList.innerHTML = '';
-                appView.hidden = true;
-                authView.hidden = false;
-            } catch (error) {
-                window.alert(error.message);
-            }
-        });
-
-        // Получение целей
-        // Получение целей и расчет прогресса
+        // Fetch goals and calculate progress
 async function fetchGoals() {
     const res = await fetch(`${API_URL}/goals`);
     const goals = await res.json();
     goalsList.innerHTML = '';
 
     goals.forEach(goal => {
-        // Вычисляем процент выполнения задач внутри цели
+        // Calculate the percentage of completed tasks for the goal
         const totalTasks = goal.tasks ? goal.tasks.length : 0;
         const completedTasks = goal.tasks ? goal.tasks.filter(t => t.is_completed).length : 0;
         const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
@@ -199,7 +87,7 @@ async function fetchGoals() {
                 </div>
                 <span class="progress-text">${progressPercent}% (${completedTasks}/${totalTasks})</span>
             </div>
-            <button type="button" class="delete-btn danger-btn" data-goal-id="${goal.id}">Удалить</button>
+            <button type="button" class="delete-btn danger-btn" data-goal-id="${goal.id}">Delete</button>
         </div>
     `;
 
@@ -217,7 +105,7 @@ async function fetchGoals() {
 }
 
 
-        // Создание цели
+        // Create a goal
         goalForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const title = document.getElementById('goal-title').value;
@@ -233,14 +121,14 @@ async function fetchGoals() {
             fetchGoals();
         });
 
-        // Выбор цели
+        // Select a goal
         function selectGoal(goal) {
             selectedGoalId = goal.id;
-            selectedGoalTitle.innerText = `📝 Задачи для: ${goal.title}`;
+            selectedGoalTitle.innerText = `📝 Tasks for: ${goal.title}`;
 
-            // Подсветка активной цели
+            // Highlight the active goal
             document.querySelectorAll('.goal-item').forEach(el => el.classList.remove('active'));
-            fetchGoals(); // Перерисует с активным классом
+            fetchGoals(); // Re-render with the active class
 
             noSelection.style.display = 'none';
             tasksContainer.style.display = 'block';
@@ -253,9 +141,9 @@ async function fetchGoals() {
             if (selectedGoalId === null) return;
 
             analyzeGoalButton.disabled = true;
-            analyzeGoalButton.innerText = 'Анализирую...';
+            analyzeGoalButton.innerText = 'Analyzing...';
             goalAnalysis.hidden = false;
-            goalAnalysis.innerText = 'AI подбирает практические шаги...';
+            goalAnalysis.innerText = 'AI is finding practical steps...';
 
             try {
                 const response = await fetch(`${API_URL}/goals/${selectedGoalId}/analyze`, {
@@ -263,12 +151,12 @@ async function fetchGoals() {
                 });
                 const result = await response.json();
                 if (!response.ok) {
-                    throw new Error(result.detail || 'Не удалось проанализировать цель');
+                    throw new Error(result.detail || 'Could not analyze the goal');
                 }
 
                 goalAnalysis.innerHTML = `
                     <strong>${result.analysis}</strong>
-                    <p>Предлагаемые задачи:</p>
+                    <p>Suggested tasks:</p>
                     <ul class="suggested-tasks"></ul>
                 `;
                 const taskList = goalAnalysis.querySelector('.suggested-tasks');
@@ -278,7 +166,7 @@ async function fetchGoals() {
                     text.innerText = taskTitle;
                     const addButton = document.createElement('button');
                     addButton.type = 'button';
-                    addButton.innerText = 'Добавить';
+                    addButton.innerText = 'Add';
                     addButton.addEventListener('click', async () => {
                         await fetch(`${API_URL}/goals/${selectedGoalId}/tasks`, {
                             method: 'POST',
@@ -286,7 +174,7 @@ async function fetchGoals() {
                             body: JSON.stringify({ title: taskTitle })
                         });
                         addButton.disabled = true;
-                        addButton.innerText = 'Добавлено';
+                        addButton.innerText = 'Added';
                         fetchTasks(selectedGoalId);
                         fetchGoals();
                     });
@@ -298,11 +186,11 @@ async function fetchGoals() {
                 goalAnalysis.innerText = error.message;
             } finally {
                 analyzeGoalButton.disabled = false;
-                analyzeGoalButton.innerText = '✨ Предложить задачи';
+                analyzeGoalButton.innerText = '✨ Suggest tasks';
             }
         });
 
-        // Получение задач для выбранной цели
+        // Fetch tasks for the selected goal
         async function fetchTasks(goalId) {
             const res = await fetch(`${API_URL}/goals/${goalId}/tasks`);
             const tasks = await res.json();
@@ -324,7 +212,7 @@ async function fetchGoals() {
                 const deleteButton = document.createElement('button');
                 deleteButton.type = 'button';
                 deleteButton.className = 'delete-btn task-delete-btn';
-                deleteButton.innerText = 'Удалить';
+                deleteButton.innerText = 'Delete';
                 deleteButton.addEventListener('click', () => deleteTask(task.id));
 
                 li.appendChild(checkbox);
@@ -334,7 +222,7 @@ async function fetchGoals() {
             });
         }
 
-        // Создание задачи
+        // Create a task
         taskForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const title = document.getElementById('task-title').value;
@@ -347,7 +235,7 @@ async function fetchGoals() {
 
             document.getElementById('task-title').value = '';
             fetchTasks(selectedGoalId);
-            fetchGoals(); // Перерисовываем прогресс слева
+            fetchGoals(); // Re-render the progress on the left
         });
 
         async function deleteGoal(goalId) {
@@ -376,7 +264,7 @@ async function fetchGoals() {
             fetchGoals();
         }
 
-        // Переключение статуса задачи
+        // Toggle task status
         async function toggleTask(task) {
             await fetch(`${API_URL}/tasks/${task.id}`, {
                 method: 'PATCH',
@@ -384,7 +272,7 @@ async function fetchGoals() {
                 body: JSON.stringify({ is_completed: !task.is_completed })
             });
             fetchTasks(selectedGoalId);
-            fetchGoals(); // Перерисовываем прогресс слева
+            fetchGoals(); // Re-render the progress on the left
         }
     </script>
 </body>

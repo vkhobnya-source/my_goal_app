@@ -4,7 +4,7 @@ services:
     environment:
       POSTGRES_DB: goals
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5432:5432"
     volumes:
@@ -22,7 +22,7 @@ services:
     environment:
       POSTGRES_DB: goals_test
       POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}
+      POSTGRES_PASSWORD: postgres
     ports:
       - "5433:5432"
     volumes:
@@ -35,18 +35,36 @@ services:
       start_period: 10s
     restart: always
 
+  backup-prod-db:
+    image: postgres:16-alpine
+    environment:
+      PGHOST: db-prod
+      PGPORT: 5432
+      PGDATABASE: goals
+      PGUSER: postgres
+      PGPASSWORD: postgres
+      BACKUP_DIR: /backups
+      BACKUP_INTERVAL_SECONDS: ${BACKUP_INTERVAL_SECONDS:-86400}
+      BACKUP_RETENTION_DAYS: ${BACKUP_RETENTION_DAYS:-7}
+    volumes:
+      - postgres_backup_data:/backups
+      - ./backup/backup-prod-db.sh:/usr/local/bin/backup-prod-db.sh:ro
+    entrypoint: ["/bin/sh", "/usr/local/bin/backup-prod-db.sh"]
+    depends_on:
+      db-prod:
+        condition: service_healthy
+    restart: always
+
   backend:
     build: ./backend
     ports:
       - "8000:8000"
     environment:
-      DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD:?Set POSTGRES_PASSWORD in .env}@db-prod:5432/goals
+      DATABASE_URL: postgresql+psycopg://postgres:postgres@db-prod:5432/goals
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-deepseek/deepseek-v4.1-flash}
       OPENROUTER_SITE_URL: ${OPENROUTER_SITE_URL:-http://localhost}
       OPENROUTER_APP_NAME: ${OPENROUTER_APP_NAME:-My Goal App}
-      COOKIE_SECURE: ${COOKIE_SECURE:-false}
-      CORS_ORIGINS: ${CORS_ORIGINS:-}
     depends_on:
       db-prod:
         condition: service_healthy
@@ -63,3 +81,4 @@ services:
 volumes:
   postgres_prod_data:
   postgres_test_data:
+  postgres_backup_data:

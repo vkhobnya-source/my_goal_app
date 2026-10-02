@@ -44,17 +44,8 @@ MANIFEST
 # --- Файлы конфигурации и секреты (пароли, токены) ---
 .env
 .env.*
-!.env.example
 
-# --- Local databases and test artifacts ---
-*.db
-*.sqlite
-*.sqlite3
-.coverage
-htmlcov/
-.pytest_cache/
-.mypy_cache/
-.ruff_cache/
-tests/test_report.html
-.playwright_lanch_test
-.aiforopenide/
+# --- Node/Cypress ---
+node_modules/
+cypress/screenshots/
+cypress/videos/

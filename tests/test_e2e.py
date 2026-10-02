@@ -4,23 +4,7 @@ import time
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
-from selenium.webdriver.support import expected_conditions as EC
-from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
-
-
-def ensure_signed_in(driver):
-    if driver.find_elements(By.ID, "app-view") and driver.find_element(
-        By.ID, "app-view"
-    ).is_displayed():
-        return
-
-    driver.find_element(By.ID, "auth-email").send_keys("test@test.ts")
-    driver.find_element(By.ID, "auth-password").send_keys("test")
-    driver.find_element(By.ID, "auth-submit").click()
-    WebDriverWait(driver, 15).until(
-        EC.visibility_of_element_located((By.ID, "app-view"))
-    )
 
 
 @pytest.fixture(scope="module")
@@ -51,10 +35,9 @@ def test_frontend_flow(driver):
     # Если мы в Docker, фронтенд доступен по имени контейнера 'frontend', иначе 'localhost'
     base_url = "http://frontend" if os.environ.get("CHROME_BIN") else "http://localhost"
     driver.get(base_url)
-    ensure_signed_in(driver)
 
     # Проверяем заголовок страницы
-    assert "Трекер Целей и Задач" in driver.title
+    assert "Goals and Tasks Tracker" in driver.title
 
     # 2. Находим поля формы создания цели и заполняем их
     title_input = driver.find_element(By.ID, "goal-title")
@@ -97,11 +80,10 @@ def test_goal_progress_bar_updates(driver):
     # 1. Открываем приложение
     base_url = "http://frontend" if os.environ.get("CHROME_BIN") else "http://localhost"
     driver.get(base_url)
-    ensure_signed_in(driver)
     # Даем бэкенду и фронтенду в докере гарантированно связаться по сети
     time.sleep(3)
 
-    assert "Трекер Целей и Задач" in driver.title
+    assert "Goals and Tasks Tracker" in driver.title
     # 2. Создаем новую цель для проверки прогресса
     title_input = driver.find_element(By.ID, "goal-title")
     submit_button = driver.find_element(By.XPATH, "//form[@id='goal-form']/button")
@@ -151,7 +133,6 @@ def test_goal_progress_bar_updates(driver):
 def test_delete_goal_and_task(driver):
     base_url = "http://frontend" if os.environ.get("CHROME_BIN") else "http://localhost"
     driver.get(base_url)
-    ensure_signed_in(driver)
 
     goal_name = f"Цель для удаления {time.time_ns()}"
     task_name = f"Задача для удаления {time.time_ns()}"
