@@ -173,3 +173,29 @@ def test_goals_are_isolated_between_users(client):
 
     assert len(client.get("/api/goals", headers=first_headers).json()) == 1
     assert client.get("/api/goals", headers=second_headers).json() == []
+
+
+def test_error_messages_are_localized(client):
+    register = client.post(
+        "/api/auth/register",
+        json={"email": "localized@example.com", "password": "secret"},
+        headers={"Accept-Language": "ru"},
+    )
+    assert register.status_code == 200
+
+    duplicate = client.post(
+        "/api/auth/register",
+        json={"email": "localized@example.com", "password": "secret"},
+        headers={"Accept-Language": "ru"},
+    )
+    assert duplicate.status_code == 400
+    assert duplicate.json()["detail"] == "Электронная почта уже зарегистрирована"
+
+
+def test_invalid_token_error_is_localized(client):
+    response = client.get(
+        "/api/goals",
+        headers={"Accept-Language": "ru", "Authorization": "Bearer nope"},
+    )
+    assert response.status_code == 401
+    assert response.json()["detail"] == "Не удалось проверить учётные данные"

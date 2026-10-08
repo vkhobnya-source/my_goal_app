@@ -8,13 +8,19 @@
 </head>
 <body>
 
+    <!-- Language switcher -->
+    <div class="lang-switcher">
+        <button type="button" class="lang-btn" data-lang="en">EN</button>
+        <button type="button" class="lang-btn" data-lang="ru">RU</button>
+    </div>
+
     <!-- Auth Screen -->
     <div id="auth-screen" class="auth-container">
         <div class="auth-box">
-            <h1>🎯 Goals Tracker</h1>
+            <h1 data-i18n="auth.heading">🎯 Goals Tracker</h1>
             <form id="auth-form">
-                <input type="email" id="auth-email" placeholder="Email..." required>
-                <input type="password" id="auth-password" placeholder="Password..." required>
+                <input type="email" id="auth-email" data-i18n-placeholder="auth.email" placeholder="Email..." required>
+                <input type="password" id="auth-password" data-i18n-placeholder="auth.password" placeholder="Password..." required>
                 <button type="submit" id="auth-submit-btn">Sign In</button>
             </form>
             <button type="button" id="toggle-auth-btn" class="toggle-btn">No account? Sign Up</button>
@@ -27,13 +33,13 @@
         <!-- Left panel: Goals -->
         <div class="sidebar">
             <div class="sidebar-header">
-                <h2>🎯 My Goals</h2>
-                <button type="button" id="logout-btn" class="logout-btn">Sign Out</button>
+                <h2 data-i18n="app.myGoals">🎯 My Goals</h2>
+                <button type="button" id="logout-btn" class="logout-btn" data-i18n="app.signOut">Sign Out</button>
             </div>
             <form id="goal-form">
-                <input type="text" id="goal-title" placeholder="Goal name..." required>
-                <textarea id="goal-desc" placeholder="Description..."></textarea>
-                <button type="submit">Add goal</button>
+                <input type="text" id="goal-title" data-i18n-placeholder="goal.title" placeholder="Goal name..." required>
+                <textarea id="goal-desc" data-i18n-placeholder="goal.description" placeholder="Description..."></textarea>
+                <button type="submit" data-i18n="goal.add">Add goal</button>
             </form>
             <div id="goals-list" class="goals-list"></div>
         </div>
@@ -41,17 +47,17 @@
         <!-- Right panel: Tasks -->
         <div class="main-content">
             <div id="no-selection" class="placeholder">
-                <h3>Select a goal on the left to manage its tasks.</h3>
+                <h3 data-i18n="placeholder.selectGoal">Select a goal on the left to manage its tasks.</h3>
             </div>
             <div id="tasks-container" class="tasks-container" style="display: none;">
                 <div class="tasks-header">
                     <h2 id="selected-goal-title">📝 Tasks</h2>
-                    <button type="button" id="analyze-goal-button">✨ Suggest tasks</button>
+                    <button type="button" id="analyze-goal-button" data-i18n="tasks.suggest">✨ Suggest tasks</button>
                 </div>
                 <div id="goal-analysis" class="goal-analysis" hidden></div>
                 <form id="task-form">
-                    <input type="text" id="task-title" placeholder="What needs to be done?" required>
-                    <button type="submit">Add</button>
+                    <input type="text" id="task-title" data-i18n-placeholder="task.title" placeholder="What needs to be done?" required>
+                    <button type="submit" data-i18n="task.add">Add</button>
                 </form>
                 <ul id="tasks-list"></ul>
             </div>
@@ -61,7 +67,70 @@
     <script>
         const API_URL = (window.location.port === '8000') ? 'http://localhost:8000/api' : '/api';
 
+        const translations = {
+            en: {
+                'page.title': 'Goals and Tasks Tracker',
+                'auth.heading': '🎯 Goals Tracker',
+                'auth.email': 'Email...',
+                'auth.password': 'Password...',
+                'auth.signIn': 'Sign In',
+                'auth.signUp': 'Sign Up',
+                'auth.toSignUp': 'No account? Sign Up',
+                'auth.toSignIn': 'Already have an account? Sign In',
+                'auth.failed': 'Authentication failed',
+                'app.myGoals': '🎯 My Goals',
+                'app.signOut': 'Sign Out',
+                'goal.title': 'Goal name...',
+                'goal.description': 'Description...',
+                'goal.add': 'Add goal',
+                'placeholder.selectGoal': 'Select a goal on the left to manage its tasks.',
+                'tasks.heading': '📝 Tasks',
+                'tasks.headingFor': '📝 Tasks for: {title}',
+                'tasks.suggest': '✨ Suggest tasks',
+                'tasks.analyzing': 'Analyzing...',
+                'tasks.analyzingHint': 'AI is finding practical steps...',
+                'tasks.suggestedHeader': 'Suggested tasks:',
+                'tasks.add': 'Add',
+                'tasks.added': 'Added',
+                'tasks.analyzeFailed': 'Could not analyze the goal',
+                'task.title': 'What needs to be done?',
+                'task.add': 'Add',
+                'common.delete': 'Delete'
+            },
+            ru: {
+                'page.title': 'Трекер целей и задач',
+                'auth.heading': '🎯 Трекер целей',
+                'auth.email': 'Электронная почта...',
+                'auth.password': 'Пароль...',
+                'auth.signIn': 'Войти',
+                'auth.signUp': 'Зарегистрироваться',
+                'auth.toSignUp': 'Нет аккаунта? Зарегистрироваться',
+                'auth.toSignIn': 'Уже есть аккаунт? Войти',
+                'auth.failed': 'Не удалось войти',
+                'app.myGoals': '🎯 Мои цели',
+                'app.signOut': 'Выйти',
+                'goal.title': 'Название цели...',
+                'goal.description': 'Описание...',
+                'goal.add': 'Добавить цель',
+                'placeholder.selectGoal': 'Выберите цель слева, чтобы управлять её задачами.',
+                'tasks.heading': '📝 Задачи',
+                'tasks.headingFor': '📝 Задачи для: {title}',
+                'tasks.suggest': '✨ Предложить задачи',
+                'tasks.analyzing': 'Анализ...',
+                'tasks.analyzingHint': 'AI подбирает практические шаги...',
+                'tasks.suggestedHeader': 'Предложенные задачи:',
+                'tasks.add': 'Добавить',
+                'tasks.added': 'Добавлено',
+                'tasks.analyzeFailed': 'Не удалось проанализировать цель',
+                'task.title': 'Что нужно сделать?',
+                'task.add': 'Добавить',
+                'common.delete': 'Удалить'
+            }
+        };
+
+        let currentLang = 'en';
         let selectedGoalId = null;
+        let selectedGoalTitleText = '';
         let authToken = null;
         let isLogin = true;
 
@@ -83,12 +152,78 @@
         const tasksList = document.getElementById('tasks-list');
         const tasksContainer = document.getElementById('tasks-container');
         const noSelection = document.getElementById('no-selection');
-        const selectedGoalTitle = document.getElementById('selected-goal-title');
+        const selectedGoalTitleEl = document.getElementById('selected-goal-title');
         const analyzeGoalButton = document.getElementById('analyze-goal-button');
         const goalAnalysis = document.getElementById('goal-analysis');
 
+        // ==================== I18N ====================
+
+        function t(key, params) {
+            const dictionary = translations[currentLang] || translations.en;
+            let text = dictionary[key] !== undefined
+                ? dictionary[key]
+                : (translations.en[key] !== undefined ? translations.en[key] : key);
+            if (params) {
+                Object.keys(params).forEach((name) => {
+                    text = text.replace(`{${name}}`, params[name]);
+                });
+            }
+            return text;
+        }
+
+        function updateLangButtons() {
+            document.querySelectorAll('.lang-btn').forEach((btn) => {
+                btn.classList.toggle('active', btn.dataset.lang === currentLang);
+            });
+        }
+
+        function renderSelectedGoalHeading() {
+            selectedGoalTitleEl.innerText = selectedGoalId === null
+                ? t('tasks.heading')
+                : t('tasks.headingFor', { title: selectedGoalTitleText });
+        }
+
+        function applyTranslations() {
+            document.documentElement.lang = currentLang;
+            document.title = t('page.title');
+
+            document.querySelectorAll('[data-i18n]').forEach((el) => {
+                el.innerText = t(el.dataset.i18n);
+            });
+            document.querySelectorAll('[data-i18n-placeholder]').forEach((el) => {
+                el.placeholder = t(el.dataset.i18nPlaceholder);
+            });
+
+            authSubmitBtn.innerText = isLogin ? t('auth.signIn') : t('auth.signUp');
+            toggleAuthBtn.innerText = isLogin ? t('auth.toSignUp') : t('auth.toSignIn');
+
+            renderSelectedGoalHeading();
+            updateLangButtons();
+        }
+
+        function setLanguage(lang) {
+            if (!translations[lang]) return;
+            currentLang = lang;
+            localStorage.setItem('lang', lang);
+            applyTranslations();
+
+            if (authToken && appScreen.style.display !== 'none') {
+                fetchGoals();
+                if (selectedGoalId !== null) {
+                    fetchTasks(selectedGoalId);
+                }
+            }
+        }
+
         // Initialize
         document.addEventListener('DOMContentLoaded', () => {
+            currentLang = localStorage.getItem('lang') || 'en';
+            applyTranslations();
+
+            document.querySelectorAll('.lang-btn').forEach((btn) => {
+                btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
+            });
+
             authToken = localStorage.getItem('token');
             if (authToken) {
                 showApp();
@@ -105,8 +240,8 @@
             appScreen.style.display = 'none';
             authError.style.display = 'none';
             isLogin = true;
-            authSubmitBtn.innerText = 'Sign In';
-            toggleAuthBtn.innerText = 'No account? Sign Up';
+            authSubmitBtn.innerText = t('auth.signIn');
+            toggleAuthBtn.innerText = t('auth.toSignUp');
         }
 
         function showApp() {
@@ -118,13 +253,8 @@
             isLogin = !isLogin;
             authError.style.display = 'none';
             authForm.reset();
-            if (isLogin) {
-                authSubmitBtn.innerText = 'Sign In';
-                toggleAuthBtn.innerText = 'No account? Sign Up';
-            } else {
-                authSubmitBtn.innerText = 'Sign Up';
-                toggleAuthBtn.innerText = 'Already have an account? Sign In';
-            }
+            authSubmitBtn.innerText = isLogin ? t('auth.signIn') : t('auth.signUp');
+            toggleAuthBtn.innerText = isLogin ? t('auth.toSignUp') : t('auth.toSignIn');
         });
 
         authForm.addEventListener('submit', async (e) => {
@@ -136,13 +266,16 @@
                 const endpoint = isLogin ? 'auth/login' : 'auth/register';
                 const response = await fetch(`${API_URL}/${endpoint}`, {
                     method: 'POST',
-                    headers: { 'Content-Type': 'application/json' },
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept-Language': currentLang
+                    },
                     body: JSON.stringify({ email, password })
                 });
 
                 if (!response.ok) {
                     const error = await response.json();
-                    throw new Error(error.detail || 'Authentication failed');
+                    throw new Error(error.detail || t('auth.failed'));
                 }
 
                 const data = await response.json();
@@ -160,6 +293,8 @@
         logoutBtn.addEventListener('click', () => {
             authToken = null;
             localStorage.removeItem('token');
+            selectedGoalId = null;
+            selectedGoalTitleText = '';
             showAuth();
             goalsList.innerHTML = '';
             tasksList.innerHTML = '';
@@ -170,7 +305,8 @@
         function getHeaders() {
             return {
                 'Content-Type': 'application/json',
-                'Authorization': `Bearer ${authToken}`
+                'Authorization': `Bearer ${authToken}`,
+                'Accept-Language': currentLang
             };
         }
 
@@ -203,7 +339,7 @@
                                 </div>
                                 <span class="progress-text">${progressPercent}% (${completedTasks}/${totalTasks})</span>
                             </div>
-                            <button type="button" class="delete-btn danger-btn" data-goal-id="${goal.id}">Delete</button>
+                            <button type="button" class="delete-btn danger-btn" data-goal-id="${goal.id}">${t('common.delete')}</button>
                         </div>
                     `;
 
@@ -245,7 +381,8 @@
         // Select a goal
         function selectGoal(goal) {
             selectedGoalId = goal.id;
-            selectedGoalTitle.innerText = `📝 Tasks for: ${goal.title}`;
+            selectedGoalTitleText = goal.title;
+            renderSelectedGoalHeading();
 
             document.querySelectorAll('.goal-item').forEach(el => el.classList.remove('active'));
             fetchGoals();
@@ -261,9 +398,9 @@
             if (selectedGoalId === null) return;
 
             analyzeGoalButton.disabled = true;
-            analyzeGoalButton.innerText = 'Analyzing...';
+            analyzeGoalButton.innerText = t('tasks.analyzing');
             goalAnalysis.hidden = false;
-            goalAnalysis.innerText = 'AI is finding practical steps...';
+            goalAnalysis.innerText = t('tasks.analyzingHint');
 
             try {
                 const response = await fetch(`${API_URL}/goals/${selectedGoalId}/analyze`, {
@@ -272,12 +409,12 @@
                 });
                 const result = await response.json();
                 if (!response.ok) {
-                    throw new Error(result.detail || 'Could not analyze the goal');
+                    throw new Error(result.detail || t('tasks.analyzeFailed'));
                 }
 
                 goalAnalysis.innerHTML = `
                     <strong>${result.analysis}</strong>
-                    <p>Suggested tasks:</p>
+                    <p>${t('tasks.suggestedHeader')}</p>
                     <ul class="suggested-tasks"></ul>
                 `;
                 const taskList = goalAnalysis.querySelector('.suggested-tasks');
@@ -287,7 +424,7 @@
                     text.innerText = taskTitle;
                     const addButton = document.createElement('button');
                     addButton.type = 'button';
-                    addButton.innerText = 'Add';
+                    addButton.innerText = t('tasks.add');
                     addButton.addEventListener('click', async () => {
                         await fetch(`${API_URL}/goals/${selectedGoalId}/tasks`, {
                             method: 'POST',
@@ -295,7 +432,7 @@
                             body: JSON.stringify({ title: taskTitle })
                         });
                         addButton.disabled = true;
-                        addButton.innerText = 'Added';
+                        addButton.innerText = t('tasks.added');
                         fetchTasks(selectedGoalId);
                         fetchGoals();
                     });
@@ -307,7 +444,7 @@
                 goalAnalysis.innerText = error.message;
             } finally {
                 analyzeGoalButton.disabled = false;
-                analyzeGoalButton.innerText = '✨ Suggest tasks';
+                analyzeGoalButton.innerText = t('tasks.suggest');
             }
         });
 
@@ -338,7 +475,7 @@
                     const deleteButton = document.createElement('button');
                     deleteButton.type = 'button';
                     deleteButton.className = 'delete-btn task-delete-btn';
-                    deleteButton.innerText = 'Delete';
+                    deleteButton.innerText = t('common.delete');
                     deleteButton.addEventListener('click', () => deleteTask(task.id));
 
                     li.appendChild(checkbox);
@@ -380,6 +517,8 @@
 
                 if (selectedGoalId === goalId) {
                     selectedGoalId = null;
+                    selectedGoalTitleText = '';
+                    renderSelectedGoalHeading();
                     tasksContainer.style.display = 'none';
                     noSelection.style.display = 'block';
                 }

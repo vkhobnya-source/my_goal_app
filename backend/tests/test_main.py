@@ -16,7 +16,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 _database_url = os.environ.get("DATABASE_URL")
 os.environ["DATABASE_URL"] = "sqlite://"
-from backend.app import auth, database, main, models, schemas  # noqa: E402
+from backend.app import auth, database, i18n, main, models, schemas  # noqa: E402
 
 if _database_url is None:
     os.environ.pop("DATABASE_URL", None)
@@ -513,3 +513,66 @@ def test_analyze_goal_rejects_invalid_provider_responses(
         main.analyze_goal(goal.id, db_session, current_user)
 
     assert error.value.status_code == 502
+
+
+# ==================== I18N ====================
+
+@pytest.mark.parametrize(
+    ("header", "expected"),
+    [
+        (None, "en"),
+        ("", "en"),
+        ("en-US,en;q=0.9", "en"),
+        ("ru-RU,ru;q=0.9,en;q=0.8", "ru"),
+        ("de-DE", "en"),
+        ("fr;q=0.8,ru;q=0.9", "ru"),
+        ("ru;q=0.5,en;q=0.9", "en"),
+        ("ru, ,en", "ru"),
+        ("ru;q=bad", "ru"),
+    ],
+)
+def test_resolve_language(header, expected):
+    assert i18n.resolve_language(header) == expected
+
+
+def test_translate_falls_back_to_english():
+    assert i18n.t("goal_not_found", "de") == "Goal not found"
+    assert i18n.t("unknown_key", "ru") == "unknown_key"
+
+
+def test_register_localizes_duplicate_email_error(db_session):
+    main.register(schemas.UserCreate(email="dup@example.com", password="secret"), db_session)
+
+    with pytest.raises(HTTPException) as error:
+        main.register(
+            schemas.UserCreate(email="dup@example.com", password="secret"),
+            db_session,
+            "ru",
+        )
+
+    assert error.value.status_code == 400
+    assert error.value.detail == "Электронная почта уже зарегистрирована"
+
+
+def test_create_task_localizes_missing_goal_error(db_session, current_user):
+    with pytest.raises(HTTPException) as error:
+        main.create_task(
+            404,
+            schemas.TaskCreate(title="Study"),
+            db_session,
+            current_user,
+            "ru",
+        )
+
+    assert error.value.detail == "Цель не найдена"
+
+
+def test_analyze_goal_localizes_missing_api_key(db_session, current_user, monkeypatch):
+    monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
+    goal = create_goal(db_session, current_user)
+
+    with pytest.raises(HTTPException) as error:
+        main.analyze_goal(goal.id, db_session, current_user, "ru")
+
+    assert error.value.status_code == 503
+    assert error.value.detail == "AI-анализ не настроен. Укажите OPENROUTER_API_KEY."
