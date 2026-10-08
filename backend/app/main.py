@@ -2,12 +2,13 @@ import json
 import os
 from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
+from datetime import timedelta
 
 from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from typing import List
-from . import models, schemas, database
+from . import models, schemas, database, auth
 
 # Автоматически создаем таблицы при запуске
 models.Base.metadata.create_all(bind=database.engine)
@@ -23,25 +24,71 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# ==================== AUTHENTICATION ENDPOINTS ====================
+
+@app.post("/api/auth/register", response_model=schemas.Token)
+def register(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
+    """Регистрация нового пользователя"""
+    db_user = db.query(models.User).filter(models.User.email == user.email).first()
+    if db_user:
+        raise HTTPException(status_code=400, detail="Email already registered")
+    
+    hashed_password = auth.get_password_hash(user.password)
+    db_user = models.User(email=user.email, hashed_password=hashed_password)
+    db.add(db_user)
+    db.commit()
+    db.refresh(db_user)
+    
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": db_user.email}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+@app.post("/api/auth/login", response_model=schemas.Token)
+def login(user: schemas.UserCreate, db: Session = Depends(database.get_db)):
+    """Вход в систему"""
+    db_user = db.query(models.User).filter(models.User.email == user.email).first()
+    if not db_user or not auth.verify_password(user.password, db_user.hashed_password):
+        raise HTTPException(status_code=401, detail="Invalid credentials")
+    
+    access_token_expires = timedelta(minutes=auth.ACCESS_TOKEN_EXPIRE_MINUTES)
+    access_token = auth.create_access_token(
+        data={"sub": db_user.email}, expires_delta=access_token_expires
+    )
+    return {"access_token": access_token, "token_type": "bearer"}
+
+
+# ==================== GOALS ENDPOINTS ====================
+
 @app.get("/api/goals", response_model=List[schemas.Goal])
-def get_goals(db: Session = Depends(database.get_db)):
-    return db.query(models.Goal).all()
+def get_goals(db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Получить все цели текущего пользователя"""
+    return db.query(models.Goal).filter(models.Goal.user_id == current_user.id).all()
 
 @app.post("/api/goals", response_model=schemas.Goal)
-def create_goal(goal: schemas.GoalCreate, db: Session = Depends(database.get_db)):
-    db_goal = models.Goal(**goal.model_dump())
+def create_goal(goal: schemas.GoalCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Создать новую цель"""
+    db_goal = models.Goal(**goal.model_dump(), user_id=current_user.id)
     db.add(db_goal)
     db.commit()
     db.refresh(db_goal)
     return db_goal
 
 @app.get("/api/goals/{goal_id}/tasks", response_model=List[schemas.Task])
-def get_tasks(goal_id: int, db: Session = Depends(database.get_db)):
+def get_tasks(goal_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Получить все задачи цели"""
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id, models.Goal.user_id == current_user.id).first()
+    if not goal:
+        raise HTTPException(status_code=404, detail="Goal not found")
     return db.query(models.Task).filter(models.Task.goal_id == goal_id).all()
 
 @app.post("/api/goals/{goal_id}/tasks", response_model=schemas.Task)
-def create_task(goal_id: int, task: schemas.TaskCreate, db: Session = Depends(database.get_db)):
-    if not db.query(models.Goal).filter(models.Goal.id == goal_id).first():
+def create_task(goal_id: int, task: schemas.TaskCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Создать новую задачу"""
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id, models.Goal.user_id == current_user.id).first()
+    if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
     db_task = models.Task(**task.model_dump(), goal_id=goal_id)
     db.add(db_task)
@@ -50,27 +97,42 @@ def create_task(goal_id: int, task: schemas.TaskCreate, db: Session = Depends(da
     return db_task
 
 @app.patch("/api/tasks/{task_id}", response_model=schemas.Task)
-def update_task_status(task_id: int, task_update: schemas.TaskUpdate, db: Session = Depends(database.get_db)):
+def update_task_status(task_id: int, task_update: schemas.TaskUpdate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Обновить статус задачи"""
     db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Проверяем, что задача принадлежит пользователю
+    goal = db.query(models.Goal).filter(models.Goal.id == db_task.goal_id, models.Goal.user_id == current_user.id).first()
+    if not goal:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     db_task.is_completed = task_update.is_completed
     db.commit()
     db.refresh(db_task)
     return db_task
 
 @app.delete("/api/tasks/{task_id}", response_model=schemas.Task)
-def delete_task(task_id: int, db: Session = Depends(database.get_db)):
+def delete_task(task_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Удалить задачу"""
     db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
     if not db_task:
         raise HTTPException(status_code=404, detail="Task not found")
+    
+    # Проверяем, что задача принадлежит пользователю
+    goal = db.query(models.Goal).filter(models.Goal.id == db_task.goal_id, models.Goal.user_id == current_user.id).first()
+    if not goal:
+        raise HTTPException(status_code=403, detail="Not authorized")
+    
     db.delete(db_task)
     db.commit()
     return db_task
 
 @app.delete("/api/goals/{goal_id}", response_model=schemas.Goal)
-def delete_goal(goal_id: int, db: Session = Depends(database.get_db)):
-    db_goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+def delete_goal(goal_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Удалить цель"""
+    db_goal = db.query(models.Goal).filter(models.Goal.id == goal_id, models.Goal.user_id == current_user.id).first()
     if not db_goal:
         raise HTTPException(status_code=404, detail="Goal not found")
     db.delete(db_goal)
@@ -79,8 +141,9 @@ def delete_goal(goal_id: int, db: Session = Depends(database.get_db)):
 
 
 @app.post("/api/goals/{goal_id}/analyze", response_model=schemas.GoalAnalysis)
-def analyze_goal(goal_id: int, db: Session = Depends(database.get_db)):
-    goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+def analyze_goal(goal_id: int, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+    """Анализ цели с помощью AI"""
+    goal = db.query(models.Goal).filter(models.Goal.id == goal_id, models.Goal.user_id == current_user.id).first()
     if not goal:
         raise HTTPException(status_code=404, detail="Goal not found")
 

@@ -8,10 +8,28 @@
 </head>
 <body>
 
-    <div class="container">
+    <!-- Auth Screen -->
+    <div id="auth-screen" class="auth-container">
+        <div class="auth-box">
+            <h1>🎯 Goals Tracker</h1>
+            <form id="auth-form">
+                <input type="email" id="auth-email" placeholder="Email..." required>
+                <input type="password" id="auth-password" placeholder="Password..." required>
+                <button type="submit" id="auth-submit-btn">Sign In</button>
+            </form>
+            <button type="button" id="toggle-auth-btn" class="toggle-btn">No account? Sign Up</button>
+            <div id="auth-error" class="error-message" style="display:none;"></div>
+        </div>
+    </div>
+
+    <!-- Main App -->
+    <div id="app-screen" class="container" style="display: none;">
         <!-- Left panel: Goals -->
         <div class="sidebar">
-            <h2>🎯 My Goals</h2>
+            <div class="sidebar-header">
+                <h2>🎯 My Goals</h2>
+                <button type="button" id="logout-btn" class="logout-btn">Sign Out</button>
+            </div>
             <form id="goal-form">
                 <input type="text" id="goal-title" placeholder="Goal name..." required>
                 <textarea id="goal-desc" placeholder="Description..."></textarea>
@@ -41,14 +59,24 @@
     </div>
 
     <script>
-       // When running in the Docker test container or on port 80, use the /api
-// proxy; otherwise connect to the FastAPI server on port 8000.
-    const API_URL = (window.location.port === '8000') ? 'http://localhost:8000/api' : '/api';
-
+        const API_URL = (window.location.port === '8000') ? 'http://localhost:8000/api' : '/api';
 
         let selectedGoalId = null;
+        let authToken = null;
+        let isLogin = true;
 
-        // DOM elements
+        // Auth DOM elements
+        const authScreen = document.getElementById('auth-screen');
+        const appScreen = document.getElementById('app-screen');
+        const authForm = document.getElementById('auth-form');
+        const authEmail = document.getElementById('auth-email');
+        const authPassword = document.getElementById('auth-password');
+        const authSubmitBtn = document.getElementById('auth-submit-btn');
+        const toggleAuthBtn = document.getElementById('toggle-auth-btn');
+        const authError = document.getElementById('auth-error');
+        const logoutBtn = document.getElementById('logout-btn');
+
+        // App DOM elements
         const goalForm = document.getElementById('goal-form');
         const goalsList = document.getElementById('goals-list');
         const taskForm = document.getElementById('task-form');
@@ -59,66 +87,159 @@
         const analyzeGoalButton = document.getElementById('analyze-goal-button');
         const goalAnalysis = document.getElementById('goal-analysis');
 
-        // Load goals on startup
-        document.addEventListener('DOMContentLoaded', fetchGoals);
+        // Initialize
+        document.addEventListener('DOMContentLoaded', () => {
+            authToken = localStorage.getItem('token');
+            if (authToken) {
+                showApp();
+                fetchGoals();
+            } else {
+                showAuth();
+            }
+        });
+
+        // ==================== AUTH LOGIC ====================
+
+        function showAuth() {
+            authScreen.style.display = 'flex';
+            appScreen.style.display = 'none';
+            authError.style.display = 'none';
+            isLogin = true;
+            authSubmitBtn.innerText = 'Sign In';
+            toggleAuthBtn.innerText = 'No account? Sign Up';
+        }
+
+        function showApp() {
+            authScreen.style.display = 'none';
+            appScreen.style.display = 'grid';
+        }
+
+        toggleAuthBtn.addEventListener('click', () => {
+            isLogin = !isLogin;
+            authError.style.display = 'none';
+            authForm.reset();
+            if (isLogin) {
+                authSubmitBtn.innerText = 'Sign In';
+                toggleAuthBtn.innerText = 'No account? Sign Up';
+            } else {
+                authSubmitBtn.innerText = 'Sign Up';
+                toggleAuthBtn.innerText = 'Already have an account? Sign In';
+            }
+        });
+
+        authForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const email = authEmail.value;
+            const password = authPassword.value;
+
+            try {
+                const endpoint = isLogin ? 'auth/login' : 'auth/register';
+                const response = await fetch(`${API_URL}/${endpoint}`, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ email, password })
+                });
+
+                if (!response.ok) {
+                    const error = await response.json();
+                    throw new Error(error.detail || 'Authentication failed');
+                }
+
+                const data = await response.json();
+                authToken = data.access_token;
+                localStorage.setItem('token', authToken);
+                authForm.reset();
+                showApp();
+                fetchGoals();
+            } catch (error) {
+                authError.innerText = error.message;
+                authError.style.display = 'block';
+            }
+        });
+
+        logoutBtn.addEventListener('click', () => {
+            authToken = null;
+            localStorage.removeItem('token');
+            showAuth();
+            goalsList.innerHTML = '';
+            tasksList.innerHTML = '';
+        });
+
+        // ==================== API REQUESTS ====================
+
+        function getHeaders() {
+            return {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${authToken}`
+            };
+        }
 
         // Fetch goals and calculate progress
-async function fetchGoals() {
-    const res = await fetch(`${API_URL}/goals`);
-    const goals = await res.json();
-    goalsList.innerHTML = '';
+        async function fetchGoals() {
+            try {
+                const res = await fetch(`${API_URL}/goals`, {
+                    headers: getHeaders()
+                });
+                if (!res.ok) throw new Error('Failed to fetch goals');
 
-    goals.forEach(goal => {
-        // Calculate the percentage of completed tasks for the goal
-        const totalTasks = goal.tasks ? goal.tasks.length : 0;
-        const completedTasks = goal.tasks ? goal.tasks.filter(t => t.is_completed).length : 0;
-        const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
+                const goals = await res.json();
+                goalsList.innerHTML = '';
 
-        const goalEl = document.createElement('div');
-        goalEl.className = `goal-item ${selectedGoalId === goal.id ? 'active' : ''}`;
+                goals.forEach(goal => {
+                    const totalTasks = goal.tasks ? goal.tasks.length : 0;
+                    const completedTasks = goal.tasks ? goal.tasks.filter(t => t.is_completed).length : 0;
+                    const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
-    goalEl.innerHTML = `
-        <div class="goal-row">
-            <div class="goal-main" data-goal-id="${goal.id}">
-                <h3>${goal.title}</h3>
-                <p>${goal.description || ''}</p>
-                <div class="progress-container">
-                    <div class="progress-bar" style="width: ${progressPercent}%"></div>
-                </div>
-                <span class="progress-text">${progressPercent}% (${completedTasks}/${totalTasks})</span>
-            </div>
-            <button type="button" class="delete-btn danger-btn" data-goal-id="${goal.id}">Delete</button>
-        </div>
-    `;
+                    const goalEl = document.createElement('div');
+                    goalEl.className = `goal-item ${selectedGoalId === goal.id ? 'active' : ''}`;
 
-    const goalMain = goalEl.querySelector('.goal-main');
-    goalMain.addEventListener('click', () => selectGoal(goal));
+                    goalEl.innerHTML = `
+                        <div class="goal-row">
+                            <div class="goal-main" data-goal-id="${goal.id}">
+                                <h3>${goal.title}</h3>
+                                <p>${goal.description || ''}</p>
+                                <div class="progress-container">
+                                    <div class="progress-bar" style="width: ${progressPercent}%"></div>
+                                </div>
+                                <span class="progress-text">${progressPercent}% (${completedTasks}/${totalTasks})</span>
+                            </div>
+                            <button type="button" class="delete-btn danger-btn" data-goal-id="${goal.id}">Delete</button>
+                        </div>
+                    `;
 
-    const deleteBtn = goalEl.querySelector('.delete-btn');
-    deleteBtn.addEventListener('click', (e) => {
-        e.stopPropagation();
-        deleteGoal(goal.id);
-    });
+                    const goalMain = goalEl.querySelector('.goal-main');
+                    goalMain.addEventListener('click', () => selectGoal(goal));
 
-    goalsList.appendChild(goalEl);
-    });
-}
+                    const deleteBtn = goalEl.querySelector('.delete-btn');
+                    deleteBtn.addEventListener('click', (e) => {
+                        e.stopPropagation();
+                        deleteGoal(goal.id);
+                    });
 
-
+                    goalsList.appendChild(goalEl);
+                });
+            } catch (error) {
+                console.error('Error fetching goals:', error);
+            }
+        }
         // Create a goal
         goalForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const title = document.getElementById('goal-title').value;
             const description = document.getElementById('goal-desc').value;
 
-            await fetch(`${API_URL}/goals`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title, description })
-            });
+            try {
+                await fetch(`${API_URL}/goals`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ title, description })
+                });
 
-            goalForm.reset();
-            fetchGoals();
+                goalForm.reset();
+                fetchGoals();
+            } catch (error) {
+                console.error('Error creating goal:', error);
+            }
         });
 
         // Select a goal
@@ -126,9 +247,8 @@ async function fetchGoals() {
             selectedGoalId = goal.id;
             selectedGoalTitle.innerText = `📝 Tasks for: ${goal.title}`;
 
-            // Highlight the active goal
             document.querySelectorAll('.goal-item').forEach(el => el.classList.remove('active'));
-            fetchGoals(); // Re-render with the active class
+            fetchGoals();
 
             noSelection.style.display = 'none';
             tasksContainer.style.display = 'block';
@@ -147,7 +267,8 @@ async function fetchGoals() {
 
             try {
                 const response = await fetch(`${API_URL}/goals/${selectedGoalId}/analyze`, {
-                    method: 'POST'
+                    method: 'POST',
+                    headers: getHeaders()
                 });
                 const result = await response.json();
                 if (!response.ok) {
@@ -170,7 +291,7 @@ async function fetchGoals() {
                     addButton.addEventListener('click', async () => {
                         await fetch(`${API_URL}/goals/${selectedGoalId}/tasks`, {
                             method: 'POST',
-                            headers: { 'Content-Type': 'application/json' },
+                            headers: getHeaders(),
                             body: JSON.stringify({ title: taskTitle })
                         });
                         addButton.disabled = true;
@@ -192,34 +313,42 @@ async function fetchGoals() {
 
         // Fetch tasks for the selected goal
         async function fetchTasks(goalId) {
-            const res = await fetch(`${API_URL}/goals/${goalId}/tasks`);
-            const tasks = await res.json();
-            tasksList.innerHTML = '';
+            try {
+                const res = await fetch(`${API_URL}/goals/${goalId}/tasks`, {
+                    headers: getHeaders()
+                });
+                if (!res.ok) throw new Error('Failed to fetch tasks');
 
-            tasks.forEach(task => {
-                const li = document.createElement('li');
-                li.className = 'task-item';
+                const tasks = await res.json();
+                tasksList.innerHTML = '';
 
-                const checkbox = document.createElement('input');
-                checkbox.type = 'checkbox';
-                checkbox.checked = task.is_completed;
-                checkbox.addEventListener('change', () => toggleTask(task));
+                tasks.forEach(task => {
+                    const li = document.createElement('li');
+                    li.className = 'task-item';
 
-                const span = document.createElement('span');
-                span.innerText = task.title;
-                if (task.is_completed) span.className = 'completed';
+                    const checkbox = document.createElement('input');
+                    checkbox.type = 'checkbox';
+                    checkbox.checked = task.is_completed;
+                    checkbox.addEventListener('change', () => toggleTask(task));
 
-                const deleteButton = document.createElement('button');
-                deleteButton.type = 'button';
-                deleteButton.className = 'delete-btn task-delete-btn';
-                deleteButton.innerText = 'Delete';
-                deleteButton.addEventListener('click', () => deleteTask(task.id));
+                    const span = document.createElement('span');
+                    span.innerText = task.title;
+                    if (task.is_completed) span.className = 'completed';
 
-                li.appendChild(checkbox);
-                li.appendChild(span);
-                li.appendChild(deleteButton);
-                tasksList.appendChild(li);
-            });
+                    const deleteButton = document.createElement('button');
+                    deleteButton.type = 'button';
+                    deleteButton.className = 'delete-btn task-delete-btn';
+                    deleteButton.innerText = 'Delete';
+                    deleteButton.addEventListener('click', () => deleteTask(task.id));
+
+                    li.appendChild(checkbox);
+                    li.appendChild(span);
+                    li.appendChild(deleteButton);
+                    tasksList.appendChild(li);
+                });
+            } catch (error) {
+                console.error('Error fetching tasks:', error);
+            }
         }
 
         // Create a task
@@ -227,52 +356,70 @@ async function fetchGoals() {
             e.preventDefault();
             const title = document.getElementById('task-title').value;
 
-            await fetch(`${API_URL}/goals/${selectedGoalId}/tasks`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ title })
-            });
+            try {
+                await fetch(`${API_URL}/goals/${selectedGoalId}/tasks`, {
+                    method: 'POST',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ title })
+                });
 
-            document.getElementById('task-title').value = '';
-            fetchTasks(selectedGoalId);
-            fetchGoals(); // Re-render the progress on the left
+                document.getElementById('task-title').value = '';
+                fetchTasks(selectedGoalId);
+                fetchGoals();
+            } catch (error) {
+                console.error('Error creating task:', error);
+            }
         });
 
         async function deleteGoal(goalId) {
-            await fetch(`${API_URL}/goals/${goalId}`, {
-                method: 'DELETE'
-            });
+            try {
+                await fetch(`${API_URL}/goals/${goalId}`, {
+                    method: 'DELETE',
+                    headers: getHeaders()
+                });
 
-            if (selectedGoalId === goalId) {
-                selectedGoalId = null;
-                tasksContainer.style.display = 'none';
-                noSelection.style.display = 'block';
-            }
+                if (selectedGoalId === goalId) {
+                    selectedGoalId = null;
+                    tasksContainer.style.display = 'none';
+                    noSelection.style.display = 'block';
+                }
 
-            fetchGoals();
-            if (selectedGoalId === null) {
-                tasksList.innerHTML = '';
+                fetchGoals();
+                if (selectedGoalId === null) {
+                    tasksList.innerHTML = '';
+                }
+            } catch (error) {
+                console.error('Error deleting goal:', error);
             }
         }
 
         async function deleteTask(taskId) {
-            await fetch(`${API_URL}/tasks/${taskId}`, {
-                method: 'DELETE'
-            });
+            try {
+                await fetch(`${API_URL}/tasks/${taskId}`, {
+                    method: 'DELETE',
+                    headers: getHeaders()
+                });
 
-            fetchTasks(selectedGoalId);
-            fetchGoals();
+                fetchTasks(selectedGoalId);
+                fetchGoals();
+            } catch (error) {
+                console.error('Error deleting task:', error);
+            }
         }
 
         // Toggle task status
         async function toggleTask(task) {
-            await fetch(`${API_URL}/tasks/${task.id}`, {
-                method: 'PATCH',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ is_completed: !task.is_completed })
-            });
-            fetchTasks(selectedGoalId);
-            fetchGoals(); // Re-render the progress on the left
+            try {
+                await fetch(`${API_URL}/tasks/${task.id}`, {
+                    method: 'PATCH',
+                    headers: getHeaders(),
+                    body: JSON.stringify({ is_completed: !task.is_completed })
+                });
+                fetchTasks(selectedGoalId);
+                fetchGoals();
+            } catch (error) {
+                console.error('Error updating task:', error);
+            }
         }
     </script>
 </body>

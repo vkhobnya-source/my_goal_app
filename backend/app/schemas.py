@@ -1,4 +1,4 @@
-from pydantic import BaseModel, ConfigDict  # Импортируем ConfigDict
+from pydantic import BaseModel, ConfigDict
 from typing import Optional, List
 
 
@@ -19,7 +19,6 @@ class Task(TaskBase):
     is_completed: bool
     goal_id: int
 
-    # Новый стандарт Pydantic v2 вместо class Config
     model_config = ConfigDict(from_attributes=True)
 
 
@@ -36,11 +35,37 @@ class Goal(GoalBase):
     id: int
     is_completed: bool
     tasks: List[Task] = []
+    user_id: int
 
-    # Новый стандарт Pydantic v2 вместо class Config
     model_config = ConfigDict(from_attributes=True)
 
 
 class GoalAnalysis(BaseModel):
     analysis: str
     proposed_tasks: List[str]
+
+
+# User schemas
+class UserBase(BaseModel):
+    email: str
+
+
+class UserCreate(UserBase):
+    password: str
+
+
+class User(UserBase):
+    id: int
+    goals: List[Goal] = []
+
+    model_config = ConfigDict(from_attributes=True)
+
+
+class Token(BaseModel):
+    access_token: str
+    token_type: str
+
+
+class TokenData(BaseModel):
+    email: Optional[str] = None
+
