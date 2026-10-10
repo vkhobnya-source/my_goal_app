@@ -290,15 +290,19 @@
             }
         });
 
-        logoutBtn.addEventListener('click', () => {
+        logoutBtn.addEventListener('click', resetSession);
+
+        function resetSession() {
             authToken = null;
             localStorage.removeItem('token');
             selectedGoalId = null;
             selectedGoalTitleText = '';
-            showAuth();
             goalsList.innerHTML = '';
             tasksList.innerHTML = '';
-        });
+            tasksContainer.style.display = 'none';
+            noSelection.style.display = 'block';
+            showAuth();
+        }
 
         // ==================== API REQUESTS ====================
 
@@ -310,12 +314,28 @@
             };
         }
 
+        // Wrapper that redirects to the auth screen when the session is invalid.
+        async function apiFetch(path, options = {}) {
+            const config = {
+                method: options.method || 'GET',
+                headers: getHeaders()
+            };
+            if (options.body !== undefined) {
+                config.body = options.body;
+            }
+
+            const response = await fetch(`${API_URL}${path}`, config);
+            if (response.status === 401) {
+                resetSession();
+                throw new Error('Unauthorized');
+            }
+            return response;
+        }
+
         // Fetch goals and calculate progress
         async function fetchGoals() {
             try {
-                const res = await fetch(`${API_URL}/goals`, {
-                    headers: getHeaders()
-                });
+                const res = await apiFetch('/goals');
                 if (!res.ok) throw new Error('Failed to fetch goals');
 
                 const goals = await res.json();
@@ -365,9 +385,8 @@
             const description = document.getElementById('goal-desc').value;
 
             try {
-                await fetch(`${API_URL}/goals`, {
+                await apiFetch('/goals', {
                     method: 'POST',
-                    headers: getHeaders(),
                     body: JSON.stringify({ title, description })
                 });
 
@@ -403,9 +422,8 @@
             goalAnalysis.innerText = t('tasks.analyzingHint');
 
             try {
-                const response = await fetch(`${API_URL}/goals/${selectedGoalId}/analyze`, {
-                    method: 'POST',
-                    headers: getHeaders()
+                const response = await apiFetch(`/goals/${selectedGoalId}/analyze`, {
+                    method: 'POST'
                 });
                 const result = await response.json();
                 if (!response.ok) {
@@ -426,9 +444,8 @@
                     addButton.type = 'button';
                     addButton.innerText = t('tasks.add');
                     addButton.addEventListener('click', async () => {
-                        await fetch(`${API_URL}/goals/${selectedGoalId}/tasks`, {
+                        await apiFetch(`/goals/${selectedGoalId}/tasks`, {
                             method: 'POST',
-                            headers: getHeaders(),
                             body: JSON.stringify({ title: taskTitle })
                         });
                         addButton.disabled = true;
@@ -451,9 +468,7 @@
         // Fetch tasks for the selected goal
         async function fetchTasks(goalId) {
             try {
-                const res = await fetch(`${API_URL}/goals/${goalId}/tasks`, {
-                    headers: getHeaders()
-                });
+                const res = await apiFetch(`/goals/${goalId}/tasks`);
                 if (!res.ok) throw new Error('Failed to fetch tasks');
 
                 const tasks = await res.json();
@@ -494,9 +509,8 @@
             const title = document.getElementById('task-title').value;
 
             try {
-                await fetch(`${API_URL}/goals/${selectedGoalId}/tasks`, {
+                await apiFetch(`/goals/${selectedGoalId}/tasks`, {
                     method: 'POST',
-                    headers: getHeaders(),
                     body: JSON.stringify({ title })
                 });
 
@@ -510,9 +524,8 @@
 
         async function deleteGoal(goalId) {
             try {
-                await fetch(`${API_URL}/goals/${goalId}`, {
-                    method: 'DELETE',
-                    headers: getHeaders()
+                await apiFetch(`/goals/${goalId}`, {
+                    method: 'DELETE'
                 });
 
                 if (selectedGoalId === goalId) {
@@ -534,9 +547,8 @@
 
         async function deleteTask(taskId) {
             try {
-                await fetch(`${API_URL}/tasks/${taskId}`, {
-                    method: 'DELETE',
-                    headers: getHeaders()
+                await apiFetch(`/tasks/${taskId}`, {
+                    method: 'DELETE'
                 });
 
                 fetchTasks(selectedGoalId);
@@ -549,9 +561,8 @@
         // Toggle task status
         async function toggleTask(task) {
             try {
-                await fetch(`${API_URL}/tasks/${task.id}`, {
+                await apiFetch(`/tasks/${task.id}`, {
                     method: 'PATCH',
-                    headers: getHeaders(),
                     body: JSON.stringify({ is_completed: !task.is_completed })
                 });
                 fetchTasks(selectedGoalId);
