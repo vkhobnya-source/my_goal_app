@@ -394,6 +394,16 @@ ul {
     text-align: center;
 }
 
+.form-error {
+    color: var(--error-color);
+    background: var(--error-bg);
+    border: 1px solid var(--error-border);
+    padding: 10px;
+    border-radius: 5px;
+    margin-top: 15px;
+    text-align: center;
+}
+
 .sidebar-header {
     display: flex;
     justify-content: space-between;

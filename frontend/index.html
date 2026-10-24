@@ -44,6 +44,7 @@
                 <textarea id="goal-desc" data-i18n-placeholder="goal.description" placeholder="Description..."></textarea>
                 <button type="submit" data-i18n="goal.add">Add goal</button>
             </form>
+            <div id="goal-error" class="form-error" style="display:none;"></div>
             <div id="goals-list" class="goals-list"></div>
         </div>
 
@@ -62,6 +63,7 @@
                     <input type="text" id="task-title" data-i18n-placeholder="task.title" placeholder="What needs to be done?" required>
                     <button type="submit" data-i18n="task.add">Add</button>
                 </form>
+                <div id="task-error" class="form-error" style="display:none;"></div>
                 <ul id="tasks-list"></ul>
             </div>
         </div>
@@ -100,7 +102,14 @@
                 'task.title': 'What needs to be done?',
                 'task.add': 'Add',
                 'tasks.empty': 'No tasks yet. Add the first task!',
-                'common.delete': 'Delete'
+                'common.delete': 'Delete',
+                'auth.emailRequired': 'Email is required.',
+                'auth.passwordRequired': 'Password is required.',
+                'auth.passwordShort': 'Password must be at least 6 characters.',
+                'auth.signingIn': 'Signing in...',
+                'auth.signingUp': 'Signing up...',
+                'goal.titleRequired': 'Goal name is required.',
+                'task.titleRequired': 'Task title is required.'
             },
             ru: {
                 'page.title': 'Трекер целей и задач',
@@ -178,7 +187,8 @@
         const selectedGoalTitleEl = document.getElementById('selected-goal-title');
         const analyzeGoalButton = document.getElementById('analyze-goal-button');
         const goalAnalysis = document.getElementById('goal-analysis');
-
+        const goalError = document.getElementById('goal-error');
+        const taskError = document.getElementById('task-error');
         // ==================== I18N ====================
 
         function t(key, params) {
@@ -287,6 +297,27 @@
             const email = authEmail.value;
             const password = authPassword.value;
 
+            authError.style.display = 'none';
+
+            if (!email || !password) {
+                authError.innerText = t('auth.emailRequired');
+                authError.style.display = 'block';
+                return;
+            }
+            if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) {
+                authError.innerText = t('auth.emailInvalid');
+                authError.style.display = 'block';
+                return;
+            }
+            if (password.length < 6) {
+                authError.innerText = t('auth.passwordShort');
+                authError.style.display = 'block';
+                return;
+            }
+
+            authSubmitBtn.disabled = true;
+            authSubmitBtn.innerText = isLogin ? t('auth.signingIn') : t('auth.signingUp');
+
             try {
                 const endpoint = isLogin ? 'auth/login' : 'auth/register';
                 const response = await fetch(`${API_URL}/${endpoint}`, {
@@ -312,6 +343,9 @@
             } catch (error) {
                 authError.innerText = error.message;
                 authError.style.display = 'block';
+            } finally {
+                authSubmitBtn.disabled = false;
+                authSubmitBtn.innerText = isLogin ? t('auth.signIn') : t('auth.signUp');
             }
         });
 
@@ -412,6 +446,14 @@
             e.preventDefault();
             const title = document.getElementById('goal-title').value;
             const description = document.getElementById('goal-desc').value;
+
+            if (!title || !title.trim()) {
+                goalError.innerText = t('goal.titleRequired');
+                goalError.style.display = 'block';
+                return;
+            }
+
+            goalError.style.display = 'none';
 
             try {
                 await apiFetch('/goals', {
@@ -540,6 +582,14 @@
         taskForm.addEventListener('submit', async (e) => {
             e.preventDefault();
             const title = document.getElementById('task-title').value;
+
+            if (!title || !title.trim()) {
+                taskError.innerText = t('task.titleRequired');
+                taskError.style.display = 'block';
+                return;
+            }
+
+            taskError.style.display = 'none';
 
             try {
                 await apiFetch(`/goals/${selectedGoalId}/tasks`, {
