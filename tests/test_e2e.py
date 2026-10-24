@@ -46,6 +46,9 @@ def driver():
 def login_via_ui(driver):
     """Register a fresh user through the UI so tests run with an authenticated session."""
     driver.get(E2E_BASE_URL)
+    driver.execute_script("localStorage.clear()")
+    driver.refresh()
+    WebDriverWait(driver, 30).until(EC.visibility_of_element_located((By.ID, "auth-screen")))
     driver.find_element(By.ID, "toggle-auth-btn").click()
     driver.find_element(By.ID, "auth-email").send_keys(f"selenium+{time.time_ns()}@example.com")
     driver.find_element(By.ID, "auth-password").send_keys("password123")
