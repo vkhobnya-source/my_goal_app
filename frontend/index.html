@@ -79,6 +79,7 @@
                 'auth.toSignIn': 'Already have an account? Sign In',
                 'auth.failed': 'Authentication failed',
                 'app.myGoals': '🎯 My Goals',
+                'goals.empty': 'No goals yet. Create your first goal!',
                 'app.signOut': 'Sign Out',
                 'goal.title': 'Goal name...',
                 'goal.description': 'Description...',
@@ -95,6 +96,7 @@
                 'tasks.analyzeFailed': 'Could not analyze the goal',
                 'task.title': 'What needs to be done?',
                 'task.add': 'Add',
+                'tasks.empty': 'No tasks yet. Add the first task!',
                 'common.delete': 'Delete'
             },
             ru: {
@@ -124,6 +126,8 @@
                 'tasks.analyzeFailed': 'Не удалось проанализировать цель',
                 'task.title': 'Что нужно сделать?',
                 'task.add': 'Добавить',
+                'tasks.empty': 'Пока нет задач. Добавьте первую задачу!',
+                'goals.empty': 'Пока нет целей. Создайте первую цель!',
                 'common.delete': 'Удалить'
             }
         };
@@ -341,6 +345,10 @@
                 const goals = await res.json();
                 goalsList.innerHTML = '';
 
+                if (goals.length === 0) {
+                    goalsList.innerHTML = `<div class="empty-state">${t('goals.empty')}</div>`;
+                }
+
                 goals.forEach(goal => {
                     const totalTasks = goal.tasks ? goal.tasks.length : 0;
                     const completedTasks = goal.tasks ? goal.tasks.filter(t => t.is_completed).length : 0;
@@ -473,6 +481,10 @@
 
                 const tasks = await res.json();
                 tasksList.innerHTML = '';
+
+                if (tasks.length === 0) {
+                    tasksList.innerHTML = `<div class="empty-state">${t('tasks.empty')}</div>`;
+                }
 
                 tasks.forEach(task => {
                     const li = document.createElement('li');
