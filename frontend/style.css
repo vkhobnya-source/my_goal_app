@@ -2,7 +2,84 @@ body {
     font-family: Arial, sans-serif;
     margin: 0;
     padding: 0;
-    background-color: #f8f9fa;
+    background-color: var(--bg-color);
+    color: var(--text-color);
+}
+
+:root {
+    --bg-color: #f8f9fa;
+    --surface-color: #ffffff;
+    --border-color: #cccccc;
+    --text-color: #212529;
+    --text-muted: #666666;
+    --input-bg: #ffffff;
+    --input-border: #dddddd;
+    --hover-bg: #f1f3f5;
+    --active-bg: #e9ecef;
+    --task-border: #eeeeee;
+    --progress-bg: #e9ecef;
+    --progress-text: #6c757d;
+    --auth-bg: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    --auth-box-bg: #ffffff;
+    --auth-box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    --auth-heading: #333333;
+    --auth-input-bg: #ffffff;
+    --auth-input-border: #dddddd;
+    --toggle-bg: #f0f0f0;
+    --toggle-color: #333333;
+    --toggle-border: #dddddd;
+    --toggle-hover: #e0e0e0;
+    --error-bg: #f8d7da;
+    --error-border: #f5c6cb;
+    --error-color: #dc3545;
+    --goal-analysis-bg: #f7f2fc;
+    --goal-analysis-border: #d8c8f0;
+    --lang-switcher-bg: rgba(255, 255, 255, 0.9);
+    --lang-btn-bg: #e9ecef;
+    --lang-btn-color: #333333;
+    --lang-btn-hover: #dee2e6;
+    --theme-btn-bg: #e9ecef;
+    --theme-btn-color: #333333;
+    --theme-btn-border: #dddddd;
+    --theme-btn-hover: #dee2e6;
+}
+
+[data-theme="dark"] {
+    --bg-color: #12161e;
+    --surface-color: #1a1f2b;
+    --border-color: #2d3748;
+    --text-color: #e9ecef;
+    --text-muted: #9aa5b1;
+    --input-bg: #12161e;
+    --input-border: #3a4354;
+    --hover-bg: #2a3442;
+    --active-bg: #233046;
+    --task-border: #2a3242;
+    --progress-bg: #2a3242;
+    --progress-text: #9aa5b1;
+    --auth-bg: linear-gradient(135deg, #4a3a8a 0%, #2e2a6e 100%);
+    --auth-box-bg: #1a1f2b;
+    --auth-box-shadow: 0 10px 25px rgba(0, 0, 0, 0.5);
+    --auth-heading: #e9ecef;
+    --auth-input-bg: #12161e;
+    --auth-input-border: #3a4354;
+    --toggle-bg: #2a3242;
+    --toggle-color: #e9ecef;
+    --toggle-border: #3a4354;
+    --toggle-hover: #344055;
+    --error-bg: #3a1f24;
+    --error-border: #5c2a31;
+    --error-color: #f28b82;
+    --goal-analysis-bg: #241f38;
+    --goal-analysis-border: #3d3360;
+    --lang-switcher-bg: rgba(26, 31, 43, 0.9);
+    --lang-btn-bg: #2a3242;
+    --lang-btn-color: #e9ecef;
+    --lang-btn-hover: #344055;
+    --theme-btn-bg: #2a3242;
+    --theme-btn-color: #e9ecef;
+    --theme-btn-border: #3a4354;
+    --theme-btn-hover: #344055;
 }
 
 .container {
@@ -10,11 +87,17 @@ body {
     height: 100vh;
 }
 
+.container {
+    display: grid;
+    grid-template-columns: 1fr 1.5fr;
+    height: 100vh;
+}
+
 .sidebar {
     flex: 1;
-    border-right: 1px solid #ccc;
+    border-right: 1px solid var(--border-color);
     padding: 20px;
-    background: #fff;
+    background: var(--surface-color);
     overflow-y: auto;
 }
 
@@ -33,9 +116,11 @@ form {
 
 input, textarea {
     padding: 8px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--input-border);
     border-radius: 4px;
     font-size: 14px;
+    background-color: var(--input-bg);
+    color: var(--text-color);
 }
 
 button {
@@ -87,9 +172,9 @@ button:hover {
 .goal-analysis {
     margin: 12px 0;
     padding: 12px;
-    border: 1px solid #d8c8f0;
+    border: 1px solid var(--goal-analysis-border);
     border-radius: 5px;
-    background: #f7f2fc;
+    background: var(--goal-analysis-bg);
 }
 
 .suggested-tasks {
@@ -118,19 +203,19 @@ button:hover {
 
 .goal-item {
     padding: 15px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--border-color);
     border-radius: 5px;
     cursor: pointer;
     transition: background 0.2s;
 }
 
 .goal-item:hover {
-    background: #f1f3f5;
+    background: var(--hover-bg);
 }
 
 .goal-item.active {
-    background: #e9ecef;
-    border-color: #ced4da;
+    background: var(--active-bg);
+    border-color: var(--border-color);
 }
 
 .goal-row {
@@ -151,7 +236,7 @@ button:hover {
 
 .goal-item p {
     margin: 0;
-    color: #666;
+    color: var(--text-muted);
     font-size: 14px;
 }
 
@@ -175,7 +260,7 @@ button:hover {
 }
 
 .placeholder {
-    color: #888;
+    color: var(--text-muted);
     text-align: center;
     margin-top: 100px;
 }
@@ -185,7 +270,7 @@ button:hover {
     align-items: center;
     gap: 10px;
     padding: 10px 0;
-    border-bottom: 1px solid #eee;
+    border-bottom: 1px solid var(--task-border);
     font-size: 16px;
 }
 
@@ -197,7 +282,7 @@ button:hover {
 
 .completed {
     text-decoration: line-through;
-    color: #888;
+    color: var(--text-muted);
 }
 
 ul {
@@ -205,10 +290,10 @@ ul {
     padding: 0;
 }
 
-/* РЎС‚РёР»Рё РґР»СЏ РїСЂРѕРіСЂРµСЃСЃ-Р±Р°СЂР° С†РµР»РµР№ */
+/* Стили для прогресс-бара целей */
 .progress-container {
     width: 100%;
-    background-color: #e9ecef;
+    background-color: var(--progress-bg);
     border-radius: 10px;
     margin-top: 10px;
     height: 8px;
@@ -217,14 +302,14 @@ ul {
 
 .progress-bar {
     height: 100%;
-    background-color: #28a745; /* Р—РµР»РµРЅС‹Р№ С†РІРµС‚ РїСЂРѕРіСЂРµСЃСЃР° */
+    background-color: #28a745; /* Зеленый цвет прогресса */
     width: 0%;
-    transition: width 0.4s ease; /* РџР»Р°РІРЅРѕРµ Р·Р°РїРѕР»РЅРµРЅРёРµ РїРѕР»РѕСЃС‹ */
+    transition: width 0.4s ease; /* Плавное заполнение полосы */
 }
 
 .progress-text {
     font-size: 12px;
-    color: #6c757d;
+    color: var(--progress-text);
     display: inline-block;
     margin-top: 4px;
 }
@@ -235,14 +320,14 @@ ul {
     align-items: center;
     justify-content: center;
     height: 100vh;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    background: var(--auth-bg);
 }
 
 .auth-box {
-    background: white;
+    background: var(--auth-box-bg);
     padding: 40px;
     border-radius: 10px;
-    box-shadow: 0 10px 25px rgba(0, 0, 0, 0.2);
+    box-shadow: var(--auth-box-shadow);
     width: 100%;
     max-width: 400px;
 }
@@ -250,7 +335,7 @@ ul {
 .auth-box h1 {
     text-align: center;
     margin-bottom: 30px;
-    color: #333;
+    color: var(--auth-heading);
 }
 
 #auth-form {
@@ -262,9 +347,11 @@ ul {
 
 #auth-form input {
     padding: 12px;
-    border: 1px solid #ddd;
+    border: 1px solid var(--auth-input-border);
     border-radius: 5px;
     font-size: 14px;
+    background-color: var(--auth-input-bg);
+    color: var(--text-color);
 }
 
 #auth-form button {
@@ -285,29 +372,28 @@ ul {
 .toggle-btn {
     width: 100%;
     padding: 10px;
-    background: #f0f0f0;
-    color: #333;
-    border: 1px solid #ddd;
+    background: var(--toggle-bg);
+    color: var(--toggle-color);
+    border: 1px solid var(--toggle-border);
     border-radius: 5px;
     cursor: pointer;
     font-size: 14px;
 }
 
 .toggle-btn:hover {
-    background: #e0e0e0;
+    background: var(--toggle-hover);
 }
 
 .error-message {
-    color: #dc3545;
-    background: #f8d7da;
-    border: 1px solid #f5c6cb;
+    color: var(--error-color);
+    background: var(--error-bg);
+    border: 1px solid var(--error-border);
     padding: 10px;
     border-radius: 5px;
     margin-top: 15px;
     text-align: center;
 }
 
-/* Logout button */
 .sidebar-header {
     display: flex;
     justify-content: space-between;
@@ -317,6 +403,12 @@ ul {
 
 .sidebar-header h2 {
     margin: 0;
+}
+
+.sidebar-header-actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
 }
 
 .logout-btn {
@@ -334,12 +426,6 @@ ul {
     background: #c82333;
 }
 
-.container {
-    display: grid;
-    grid-template-columns: 1fr 1.5fr;
-    height: 100vh;
-}
-
 .danger-btn {
     background: #dc3545;
 }
@@ -348,7 +434,6 @@ ul {
     background: #c82333;
 }
 
-/* Language switcher */
 .lang-switcher {
     position: fixed;
     top: 12px;
@@ -357,15 +442,15 @@ ul {
     display: flex;
     gap: 6px;
     padding: 4px;
-    background: rgba(255, 255, 255, 0.9);
+    background: var(--lang-switcher-bg);
     border-radius: 6px;
     box-shadow: 0 2px 6px rgba(0, 0, 0, 0.15);
 }
 
 .lang-btn {
     padding: 4px 10px;
-    background: #e9ecef;
-    color: #333;
+    background: var(--lang-btn-bg);
+    color: var(--lang-btn-color);
     border: none;
     border-radius: 4px;
     font-size: 12px;
@@ -374,7 +459,7 @@ ul {
 }
 
 .lang-btn:hover {
-    background: #dee2e6;
+    background: var(--lang-btn-hover);
 }
 
 .lang-btn.active {
@@ -382,14 +467,25 @@ ul {
     color: #fff;
 }
 
+.theme-toggle-btn {
+    padding: 8px 12px;
+    background: var(--theme-btn-bg);
+    color: var(--theme-btn-color);
+    border: 1px solid var(--theme-btn-border);
+    border-radius: 5px;
+    cursor: pointer;
+    font-size: 14px;
+}
 
+.theme-toggle-btn:hover {
+    background: var(--theme-btn-hover);
+}
 
-/* Empty states */
 .empty-state {
     padding: 20px;
     text-align: center;
-    color: #888;
-    background: #fff;
-    border: 1px dashed #ddd;
+    color: var(--text-muted);
+    background: var(--surface-color);
+    border: 1px dashed var(--border-color);
     border-radius: 5px;
 }

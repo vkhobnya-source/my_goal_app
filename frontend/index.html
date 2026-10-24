@@ -34,7 +34,10 @@
         <div class="sidebar">
             <div class="sidebar-header">
                 <h2 data-i18n="app.myGoals">🎯 My Goals</h2>
-                <button type="button" id="logout-btn" class="logout-btn" data-i18n="app.signOut">Sign Out</button>
+                <div class="sidebar-header-actions">
+                    <button type="button" id="theme-toggle-btn" class="theme-toggle-btn" title="Toggle theme">&#x1F319;</button>
+                    <button type="button" id="logout-btn" class="logout-btn" data-i18n="app.signOut">Sign Out</button>
+                </div>
             </div>
             <form id="goal-form">
                 <input type="text" id="goal-title" data-i18n-placeholder="goal.title" placeholder="Goal name..." required>
@@ -137,6 +140,22 @@
         let selectedGoalTitleText = '';
         let authToken = null;
         let isLogin = true;
+        let currentTheme = 'light';
+
+        const themeToggleBtn = document.getElementById('theme-toggle-btn');
+
+        // ==================== THEME ====================
+
+        function applyTheme(theme) {
+            currentTheme = theme;
+            document.documentElement.setAttribute('data-theme', theme);
+            localStorage.setItem('theme', theme);
+            themeToggleBtn.innerText = theme === 'dark' ? '☀️' : '🌙';
+        }
+
+        themeToggleBtn.addEventListener('click', () => {
+            applyTheme(currentTheme === 'dark' ? 'light' : 'dark');
+        });
 
         // Auth DOM elements
         const authScreen = document.getElementById('auth-screen');
@@ -223,6 +242,8 @@
         document.addEventListener('DOMContentLoaded', () => {
             currentLang = localStorage.getItem('lang') || 'en';
             applyTranslations();
+            const savedTheme = localStorage.getItem('theme');
+            applyTheme(savedTheme || (window.matchMedia && window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'));
 
             document.querySelectorAll('.lang-btn').forEach((btn) => {
                 btn.addEventListener('click', () => setLanguage(btn.dataset.lang));
