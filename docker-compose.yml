@@ -61,6 +61,8 @@ services:
       - "${BACKEND_PORT:-8000}:8000"
     environment:
       DATABASE_URL: postgresql+psycopg://postgres:${POSTGRES_PASSWORD:?POSTGRES_PASSWORD must be set}@db-prod:5432/goals
+      SECRET_KEY: ${SECRET_KEY:-your-secret-key-change-this-in-production}
+      CORS_ORIGINS: ${CORS_ORIGINS:-http://localhost:8080}
       OPENROUTER_API_KEY: ${OPENROUTER_API_KEY}
       OPENROUTER_MODEL: ${OPENROUTER_MODEL:-deepseek/deepseek-v4.1-flash}
       OPENROUTER_SITE_URL: ${OPENROUTER_SITE_URL:-http://localhost}

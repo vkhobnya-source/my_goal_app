@@ -9,6 +9,14 @@ describe("Goals and Tasks Tracker", () => {
 
     // Open the application before each scenario.
     cy.visit("/");
+
+    // Register a fresh user so every scenario runs with an authenticated session.
+    const email = `cypress+${Date.now()}@example.com`;
+    cy.get("#toggle-auth-btn").click();
+    cy.get("#auth-email").type(email);
+    cy.get("#auth-password").type("password123");
+    cy.get("#auth-submit-btn").click();
+    cy.get("#app-screen").should("be.visible", { timeout: 15000 });
   });
 
   afterEach(() => {

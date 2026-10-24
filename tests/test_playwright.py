@@ -21,6 +21,12 @@ def open_page():
         browser = playwright.chromium.launch(headless=True)
         page = browser.new_page()
         page.goto(BASE_URL)
+        # Register a fresh user so every scenario runs with an authenticated session.
+        page.locator("#toggle-auth-btn").click()
+        page.locator("#auth-email").fill(f"e2e-{time.time_ns()}@example.com")
+        page.locator("#auth-password").fill("password123")
+        page.locator("#auth-submit-btn").click()
+        expect(page.locator("#app-screen")).to_be_visible(timeout=15000)
     except Exception:
         if browser is not None:
             browser.close()

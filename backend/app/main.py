@@ -15,10 +15,15 @@ models.Base.metadata.create_all(bind=database.engine)
 
 app = FastAPI(title="Goals & Tasks Tracker API")
 
-# Настройка CORS, чтобы React (обычно порт 5173 или 3000) мог делать запросы
+# Настройка CORS — доверенные origins задаются через переменную окружения
+origins = [
+    origin.strip()
+    for origin in os.getenv("CORS_ORIGINS", "http://localhost:8080").split(",")
+    if origin.strip()
+]
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["*"],
+    allow_origins=origins,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],

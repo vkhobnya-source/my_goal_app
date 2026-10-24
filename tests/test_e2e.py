@@ -5,6 +5,8 @@ import pytest
 from selenium import webdriver
 from selenium.webdriver.chrome.service import Service
 from selenium.webdriver.common.by import By
+from selenium.webdriver.support import expected_conditions as EC
+from selenium.webdriver.support.ui import WebDriverWait
 from webdriver_manager.chrome import ChromeDriverManager
 
 
@@ -41,8 +43,18 @@ def driver():
     driver.quit()
 
 
-def test_frontend_flow(driver):
+def login_via_ui(driver):
+    """Register a fresh user through the UI so tests run with an authenticated session."""
     driver.get(E2E_BASE_URL)
+    driver.find_element(By.ID, "toggle-auth-btn").click()
+    driver.find_element(By.ID, "auth-email").send_keys(f"selenium+{time.time_ns()}@example.com")
+    driver.find_element(By.ID, "auth-password").send_keys("password123")
+    driver.find_element(By.ID, "auth-submit-btn").click()
+    WebDriverWait(driver, 30).until(EC.visibility_of_element_located((By.ID, "app-screen")))
+
+
+def test_frontend_flow(driver):
+    login_via_ui(driver)
 
     # Проверяем заголовок страницы
     assert "Goals and Tasks Tracker" in driver.title
@@ -87,7 +99,7 @@ def test_frontend_flow(driver):
 
 def test_goal_progress_bar_updates(driver):
     # 1. Открываем приложение
-    driver.get(E2E_BASE_URL)
+    login_via_ui(driver)
     # Даем бэкенду и фронтенду в докере гарантированно связаться по сети
     time.sleep(3)
 
@@ -139,7 +151,7 @@ def test_goal_progress_bar_updates(driver):
 
 
 def test_delete_goal_and_task(driver):
-    driver.get(E2E_BASE_URL)
+    login_via_ui(driver)
 
     goal_name = f"Цель для удаления {time.time_ns()}"
     task_name = f"Задача для удаления {time.time_ns()}"
