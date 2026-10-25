@@ -73,3 +73,8 @@ You are an expert Frontend and Node.js developer. Always follow these rules when
 - Emoji via bash/PowerShell get mangled - use HTML entities (&#x1F319;) or JS unicode escapes (\uD83C\uDF19).
 - Edit CSS/JS via here-string + Set-Content -NoNewline; keep CRLF line endings.
 - E2E fixture e2e_stack in tests/conftest.py starts docker compose stack automatically.
+
+
+## Git
+- Set line endings explicitly: git config --global core.autocrlf true (Windows) or input (Mac/Linux).
+- More reliable: add .gitattributes in project root with * text=auto.
