@@ -159,7 +159,7 @@
             currentTheme = theme;
             document.documentElement.setAttribute('data-theme', theme);
             localStorage.setItem('theme', theme);
-            themeToggleBtn.innerText = theme === 'dark' ? '☀️' : '🌙';
+            themeToggleBtn.innerText = theme === 'dark' ? '\u2600\uFE0F' : '\uD83C\uDF19';
         }
 
         themeToggleBtn.addEventListener('click', () => {
@@ -192,10 +192,8 @@
         // ==================== I18N ====================
 
         function t(key, params) {
-            const dictionary = translations[currentLang] || translations.en;
-            let text = dictionary[key] !== undefined
-                ? dictionary[key]
-                : (translations.en[key] !== undefined ? translations.en[key] : key);
+            const dictionary = translations[currentLang] ?? translations.en;
+            let text = dictionary[key] ?? translations.en[key] ?? key;
             if (params) {
                 Object.keys(params).forEach((name) => {
                     text = text.replace(`{${name}}`, params[name]);
@@ -405,8 +403,8 @@
                 }
 
                 goals.forEach(goal => {
-                    const totalTasks = goal.tasks ? goal.tasks.length : 0;
-                    const completedTasks = goal.tasks ? goal.tasks.filter(t => t.is_completed).length : 0;
+                    const totalTasks = goal.tasks?.length ?? 0;
+                    const completedTasks = goal.tasks?.filter(t => t.is_completed).length ?? 0;
                     const progressPercent = totalTasks > 0 ? Math.round((completedTasks / totalTasks) * 100) : 0;
 
                     const goalEl = document.createElement('div');

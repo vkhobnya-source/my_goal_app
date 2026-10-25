@@ -2,7 +2,7 @@ import json
 
 import pytest
 
-from backend.app import main
+from backend.app.routers import goals as goals_router
 
 
 @pytest.fixture
@@ -132,7 +132,7 @@ def test_analyze_goal_returns_proposed_tasks(client, auth_headers, monkeypatch):
             return json.dumps(response_body).encode("utf-8")
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr(main, "urlopen", lambda request, timeout: FakeResponse())
+    monkeypatch.setattr(goals_router, "urlopen", lambda request, timeout: FakeResponse())
 
     response = client.post(f"/api/goals/{goal_id}/analyze", headers=auth_headers)
 

@@ -1,6 +1,6 @@
 import os
 from datetime import datetime, timedelta, timezone
-from typing import Optional
+from typing import Annotated, Optional
 from jose import JWTError, jwt
 from passlib.context import CryptContext
 from fastapi import Depends, Header, HTTPException, status
@@ -39,9 +39,9 @@ def create_access_token(data: dict, expires_delta: Optional[timedelta] = None) -
     return encoded_jwt
 
 
-async def get_current_user(
+def get_current_user(
+    db: Annotated[Session, Depends(database.get_db)],
     token: str = Depends(oauth2_scheme),
-    db: Session = Depends(database.get_db),
     accept_language: Optional[str] = Header(default=None),
 ) -> models.User:
     """Получить текущего пользователя из JWT токена"""

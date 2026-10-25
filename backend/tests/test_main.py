@@ -1,4 +1,3 @@
-import asyncio
 import json
 import os
 import sys
@@ -16,7 +15,8 @@ sys.path.insert(0, str(Path(__file__).resolve().parents[2]))
 
 _database_url = os.environ.get("DATABASE_URL")
 os.environ["DATABASE_URL"] = "sqlite://"
-from backend.app import auth, database, i18n, main, models, schemas  # noqa: E402
+from backend.app import auth as auth_service, database, i18n, models, schemas  # noqa: E402
+from backend.app.routers import auth as auth_router, goals as goals_router, tasks as tasks_router  # noqa: E402
 
 if _database_url is None:
     os.environ.pop("DATABASE_URL", None)
@@ -44,7 +44,7 @@ def db_session():
 def _make_user(db_session, email):
     user = models.User(
         email=email,
-        hashed_password=auth.get_password_hash("secret"),
+        hashed_password=auth_service.get_password_hash("secret"),
     )
     db_session.add(user)
     db_session.commit()
@@ -84,7 +84,7 @@ def urlopen_raising(error):
 
 
 def create_goal(db_session, current_user, title="Learn Python", description=None):
-    return main.create_goal(
+    return goals_router.create_goal(
         schemas.GoalCreate(title=title, description=description),
         db_session,
         current_user,
@@ -115,7 +115,7 @@ def test_get_db_yields_session_and_closes_it(monkeypatch):
 # ==================== AUTHENTICATION ====================
 
 def test_register_creates_user_and_returns_token(db_session):
-    token = main.register(
+    token = auth_router.register(
         schemas.UserCreate(email="new@example.com", password="secret"),
         db_session,
     )
@@ -124,14 +124,14 @@ def test_register_creates_user_and_returns_token(db_session):
     assert token["access_token"]
     stored = db_session.query(models.User).filter_by(email="new@example.com").first()
     assert stored is not None
-    assert auth.verify_password("secret", stored.hashed_password)
+    assert auth_service.verify_password("secret", stored.hashed_password)
 
 
 def test_register_rejects_duplicate_email(db_session):
-    main.register(schemas.UserCreate(email="dup@example.com", password="secret"), db_session)
+    auth_router.register(schemas.UserCreate(email="dup@example.com", password="secret"), db_session)
 
     with pytest.raises(HTTPException) as error:
-        main.register(
+        auth_router.register(
             schemas.UserCreate(email="dup@example.com", password="secret"),
             db_session,
         )
@@ -141,9 +141,9 @@ def test_register_rejects_duplicate_email(db_session):
 
 
 def test_login_returns_token_for_valid_credentials(db_session):
-    main.register(schemas.UserCreate(email="login@example.com", password="secret"), db_session)
+    auth_router.register(schemas.UserCreate(email="login@example.com", password="secret"), db_session)
 
-    token = main.login(
+    token = auth_router.login(
         schemas.UserCreate(email="login@example.com", password="secret"),
         db_session,
     )
@@ -153,10 +153,10 @@ def test_login_returns_token_for_valid_credentials(db_session):
 
 
 def test_login_rejects_invalid_credentials(db_session):
-    main.register(schemas.UserCreate(email="login@example.com", password="secret"), db_session)
+    auth_router.register(schemas.UserCreate(email="login@example.com", password="secret"), db_session)
 
     with pytest.raises(HTTPException) as error:
-        main.login(
+        auth_router.login(
             schemas.UserCreate(email="login@example.com", password="wrong"),
             db_session,
         )
@@ -166,34 +166,34 @@ def test_login_rejects_invalid_credentials(db_session):
 
 
 def test_get_current_user_returns_user_for_valid_token(db_session, current_user):
-    token = auth.create_access_token({"sub": current_user.email})
+    token = auth_service.create_access_token({"sub": current_user.email})
 
-    result = asyncio.run(auth.get_current_user(token=token, db=db_session))
+    result = auth_service.get_current_user(token=token, db=db_session)
 
     assert result.id == current_user.id
 
 
 def test_get_current_user_rejects_invalid_token(db_session):
     with pytest.raises(HTTPException) as error:
-        asyncio.run(auth.get_current_user(token="not-a-token", db=db_session))
+        auth_service.get_current_user(token="not-a-token", db=db_session)
 
     assert error.value.status_code == 401
 
 
 def test_get_current_user_rejects_token_without_subject(db_session):
-    token = auth.create_access_token({"foo": "bar"})
+    token = auth_service.create_access_token({"foo": "bar"})
 
     with pytest.raises(HTTPException) as error:
-        asyncio.run(auth.get_current_user(token=token, db=db_session))
+        auth_service.get_current_user(token=token, db=db_session)
 
     assert error.value.status_code == 401
 
 
 def test_get_current_user_rejects_unknown_user(db_session):
-    token = auth.create_access_token({"sub": "ghost@example.com"})
+    token = auth_service.create_access_token({"sub": "ghost@example.com"})
 
     with pytest.raises(HTTPException) as error:
-        asyncio.run(auth.get_current_user(token=token, db=db_session))
+        auth_service.get_current_user(token=token, db=db_session)
 
     assert error.value.status_code == 401
 
@@ -207,21 +207,21 @@ def test_create_goal_sets_defaults_and_get_goals_returns_it(db_session, current_
     assert goal.description == "Practice every day"
     assert goal.is_completed is False
     assert goal.user_id == current_user.id
-    assert main.get_goals(db_session, current_user) == [goal]
+    assert goals_router.get_goals(db_session, current_user) == [goal]
 
 
 def test_get_goals_only_returns_owned_goals(db_session, current_user, other_user):
     create_goal(db_session, current_user, title="Mine")
     create_goal(db_session, other_user, title="Theirs")
 
-    goals = main.get_goals(db_session, current_user)
+    goals = goals_router.get_goals(db_session, current_user)
 
     assert [goal.title for goal in goals] == ["Mine"]
 
 
 def test_create_task_requires_an_existing_goal(db_session, current_user):
     with pytest.raises(HTTPException) as error:
-        main.create_task(404, schemas.TaskCreate(title="Study"), db_session, current_user)
+        tasks_router.create_task(404, schemas.TaskCreate(title="Study"), db_session, current_user)
 
     assert error.value.status_code == 404
     assert error.value.detail == "Goal not found"
@@ -231,7 +231,7 @@ def test_create_task_rejects_goal_owned_by_another_user(db_session, current_user
     goal = create_goal(db_session, other_user)
 
     with pytest.raises(HTTPException) as error:
-        main.create_task(
+        tasks_router.create_task(
             goal.id,
             schemas.TaskCreate(title="Study"),
             db_session,
@@ -245,7 +245,7 @@ def test_get_tasks_rejects_foreign_goal(db_session, current_user, other_user):
     goal = create_goal(db_session, other_user)
 
     with pytest.raises(HTTPException) as error:
-        main.get_tasks(goal.id, db_session, current_user)
+        tasks_router.get_tasks(goal.id, db_session, current_user)
 
     assert error.value.status_code == 404
 
@@ -253,7 +253,7 @@ def test_get_tasks_rejects_foreign_goal(db_session, current_user, other_user):
 def test_create_task_assigns_goal_and_default_status(db_session, current_user):
     goal = create_goal(db_session, current_user)
 
-    task = main.create_task(
+    task = tasks_router.create_task(
         goal.id,
         schemas.TaskCreate(title="Read a chapter"),
         db_session,
@@ -263,19 +263,19 @@ def test_create_task_assigns_goal_and_default_status(db_session, current_user):
     assert task.title == "Read a chapter"
     assert task.goal_id == goal.id
     assert task.is_completed is False
-    assert main.get_tasks(goal.id, db_session, current_user) == [task]
+    assert tasks_router.get_tasks(goal.id, db_session, current_user) == [task]
 
 
 def test_update_task_status_changes_completion(db_session, current_user):
     goal = create_goal(db_session, current_user)
-    task = main.create_task(
+    task = tasks_router.create_task(
         goal.id,
         schemas.TaskCreate(title="Read a chapter"),
         db_session,
         current_user,
     )
 
-    updated = main.update_task_status(
+    updated = tasks_router.update_task_status(
         task.id,
         schemas.TaskUpdate(is_completed=True),
         db_session,
@@ -287,7 +287,7 @@ def test_update_task_status_changes_completion(db_session, current_user):
 
 def test_update_missing_task_returns_not_found(db_session, current_user):
     with pytest.raises(HTTPException) as error:
-        main.update_task_status(
+        tasks_router.update_task_status(
             404,
             schemas.TaskUpdate(is_completed=True),
             db_session,
@@ -300,7 +300,7 @@ def test_update_missing_task_returns_not_found(db_session, current_user):
 
 def test_update_task_status_rejects_foreign_task(db_session, current_user, other_user):
     goal = create_goal(db_session, other_user)
-    task = main.create_task(
+    task = tasks_router.create_task(
         goal.id,
         schemas.TaskCreate(title="Read a chapter"),
         db_session,
@@ -308,7 +308,7 @@ def test_update_task_status_rejects_foreign_task(db_session, current_user, other
     )
 
     with pytest.raises(HTTPException) as error:
-        main.update_task_status(
+        tasks_router.update_task_status(
             task.id,
             schemas.TaskUpdate(is_completed=True),
             db_session,
@@ -321,22 +321,22 @@ def test_update_task_status_rejects_foreign_task(db_session, current_user, other
 
 def test_delete_task_removes_it(db_session, current_user):
     goal = create_goal(db_session, current_user)
-    task = main.create_task(
+    task = tasks_router.create_task(
         goal.id,
         schemas.TaskCreate(title="Read a chapter"),
         db_session,
         current_user,
     )
 
-    deleted = main.delete_task(task.id, db_session, current_user)
+    deleted = tasks_router.delete_task(task.id, db_session, current_user)
 
     assert deleted.id == task.id
-    assert main.get_tasks(goal.id, db_session, current_user) == []
+    assert tasks_router.get_tasks(goal.id, db_session, current_user) == []
 
 
 def test_delete_missing_task_returns_not_found(db_session, current_user):
     with pytest.raises(HTTPException) as error:
-        main.delete_task(404, db_session, current_user)
+        tasks_router.delete_task(404, db_session, current_user)
 
     assert error.value.status_code == 404
     assert error.value.detail == "Task not found"
@@ -344,7 +344,7 @@ def test_delete_missing_task_returns_not_found(db_session, current_user):
 
 def test_delete_task_rejects_foreign_task(db_session, current_user, other_user):
     goal = create_goal(db_session, other_user)
-    task = main.create_task(
+    task = tasks_router.create_task(
         goal.id,
         schemas.TaskCreate(title="Read a chapter"),
         db_session,
@@ -352,7 +352,7 @@ def test_delete_task_rejects_foreign_task(db_session, current_user, other_user):
     )
 
     with pytest.raises(HTTPException) as error:
-        main.delete_task(task.id, db_session, current_user)
+        tasks_router.delete_task(task.id, db_session, current_user)
 
     assert error.value.status_code == 403
     assert error.value.detail == "Not authorized"
@@ -360,14 +360,14 @@ def test_delete_task_rejects_foreign_task(db_session, current_user, other_user):
 
 def test_delete_goal_cascades_to_tasks(db_session, current_user):
     goal = create_goal(db_session, current_user)
-    task = main.create_task(
+    task = tasks_router.create_task(
         goal.id,
         schemas.TaskCreate(title="Read a chapter"),
         db_session,
         current_user,
     )
 
-    deleted = main.delete_goal(goal.id, db_session, current_user)
+    deleted = goals_router.delete_goal(goal.id, db_session, current_user)
 
     assert deleted.id == goal.id
     assert db_session.get(models.Task, task.id) is None
@@ -375,7 +375,7 @@ def test_delete_goal_cascades_to_tasks(db_session, current_user):
 
 def test_delete_missing_goal_returns_not_found(db_session, current_user):
     with pytest.raises(HTTPException) as error:
-        main.delete_goal(404, db_session, current_user)
+        goals_router.delete_goal(404, db_session, current_user)
 
     assert error.value.status_code == 404
     assert error.value.detail == "Goal not found"
@@ -386,12 +386,12 @@ def test_delete_missing_goal_returns_not_found(db_session, current_user):
 def test_analyze_goal_requires_existing_goal_and_api_key(db_session, current_user, monkeypatch):
     monkeypatch.delenv("OPENROUTER_API_KEY", raising=False)
     with pytest.raises(HTTPException) as missing_goal:
-        main.analyze_goal(404, db_session, current_user)
+        goals_router.analyze_goal(404, db_session, current_user)
     assert missing_goal.value.status_code == 404
 
     goal = create_goal(db_session, current_user)
     with pytest.raises(HTTPException) as missing_key:
-        main.analyze_goal(goal.id, db_session, current_user)
+        goals_router.analyze_goal(goal.id, db_session, current_user)
     assert missing_key.value.status_code == 503
 
 
@@ -421,9 +421,9 @@ def test_analyze_goal_sends_request_and_normalizes_provider_result(
 
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setenv("OPENROUTER_MODEL", "test/model")
-    monkeypatch.setattr(main, "urlopen", fake_urlopen)
+    monkeypatch.setattr(goals_router, "urlopen", fake_urlopen)
 
-    result = main.analyze_goal(goal.id, db_session, current_user)
+    result = goals_router.analyze_goal(goal.id, db_session, current_user)
 
     assert result == {
         "analysis": "Start with small steps.",
@@ -448,10 +448,10 @@ def test_analyze_goal_maps_provider_http_error(db_session, current_user, monkeyp
         fp=BytesIO(b'{"error": {"message": "rate limit"}}'),
     )
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr(main, "urlopen", urlopen_raising(provider_error))
+    monkeypatch.setattr(goals_router, "urlopen", urlopen_raising(provider_error))
 
     with pytest.raises(HTTPException) as error:
-        main.analyze_goal(goal.id, db_session, current_user)
+        goals_router.analyze_goal(goal.id, db_session, current_user)
 
     assert error.value.status_code == 502
     assert "rate limit" in error.value.detail
@@ -469,10 +469,10 @@ def test_analyze_goal_maps_connection_failures(
 ):
     goal = create_goal(db_session, current_user)
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
-    monkeypatch.setattr(main, "urlopen", urlopen_raising(provider_failure))
+    monkeypatch.setattr(goals_router, "urlopen", urlopen_raising(provider_failure))
 
     with pytest.raises(HTTPException) as error:
-        main.analyze_goal(goal.id, db_session, current_user)
+        goals_router.analyze_goal(goal.id, db_session, current_user)
 
     assert error.value.status_code == 502
     assert error.value.detail == expected_detail
@@ -504,13 +504,13 @@ def test_analyze_goal_rejects_invalid_provider_responses(
     goal = create_goal(db_session, current_user)
     monkeypatch.setenv("OPENROUTER_API_KEY", "test-key")
     monkeypatch.setattr(
-        main,
+        goals_router,
         "urlopen",
         lambda request, timeout: FakeResponse(provider_body),
     )
 
     with pytest.raises(HTTPException) as error:
-        main.analyze_goal(goal.id, db_session, current_user)
+        goals_router.analyze_goal(goal.id, db_session, current_user)
 
     assert error.value.status_code == 502
 
@@ -541,10 +541,10 @@ def test_translate_falls_back_to_english():
 
 
 def test_register_localizes_duplicate_email_error(db_session):
-    main.register(schemas.UserCreate(email="dup@example.com", password="secret"), db_session)
+    auth_router.register(schemas.UserCreate(email="dup@example.com", password="secret"), db_session)
 
     with pytest.raises(HTTPException) as error:
-        main.register(
+        auth_router.register(
             schemas.UserCreate(email="dup@example.com", password="secret"),
             db_session,
             "ru",
@@ -556,7 +556,7 @@ def test_register_localizes_duplicate_email_error(db_session):
 
 def test_create_task_localizes_missing_goal_error(db_session, current_user):
     with pytest.raises(HTTPException) as error:
-        main.create_task(
+        tasks_router.create_task(
             404,
             schemas.TaskCreate(title="Study"),
             db_session,
@@ -572,7 +572,7 @@ def test_analyze_goal_localizes_missing_api_key(db_session, current_user, monkey
     goal = create_goal(db_session, current_user)
 
     with pytest.raises(HTTPException) as error:
-        main.analyze_goal(goal.id, db_session, current_user, "ru")
+        goals_router.analyze_goal(goal.id, db_session, current_user, "ru")
 
     assert error.value.status_code == 503
     assert error.value.detail == "AI-анализ не настроен. Укажите OPENROUTER_API_KEY."
