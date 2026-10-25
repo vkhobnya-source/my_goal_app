@@ -4,10 +4,10 @@ from urllib.error import HTTPError, URLError
 from urllib.request import Request, urlopen
 from datetime import timedelta
 
-from fastapi import FastAPI, Depends, Header, HTTPException
+from fastapi import FastAPI, Depends, Header, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
-from typing import List, Optional
+from typing import Annotated, List, Optional
 from . import models, schemas, database, auth, i18n
 
 # Автоматически создаем таблицы при запуске
@@ -34,7 +34,7 @@ app.add_middleware(
 @app.post("/api/auth/register", response_model=schemas.Token)
 def register(
     user: schemas.UserCreate,
-    db: Session = Depends(database.get_db),
+    db: Annotated[Session, Depends(database.get_db)],
     accept_language: Optional[str] = Header(default=None),
 ):
     """Регистрация нового пользователя"""
@@ -42,7 +42,7 @@ def register(
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if db_user:
         raise HTTPException(
-            status_code=400,
+            status_code=status.HTTP_400_BAD_REQUEST,
             detail=i18n.t("email_already_registered", lang),
         )
     
@@ -62,7 +62,7 @@ def register(
 @app.post("/api/auth/login", response_model=schemas.Token)
 def login(
     user: schemas.UserCreate,
-    db: Session = Depends(database.get_db),
+    db: Annotated[Session, Depends(database.get_db)],
     accept_language: Optional[str] = Header(default=None),
 ):
     """Вход в систему"""
@@ -70,7 +70,7 @@ def login(
     db_user = db.query(models.User).filter(models.User.email == user.email).first()
     if not db_user or not auth.verify_password(user.password, db_user.hashed_password):
         raise HTTPException(
-            status_code=401,
+            status_code=status.HTTP_401_UNAUTHORIZED,
             detail=i18n.t("invalid_credentials", lang),
         )
     
@@ -84,12 +84,12 @@ def login(
 # ==================== GOALS ENDPOINTS ====================
 
 @app.get("/api/goals", response_model=List[schemas.Goal])
-def get_goals(db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+def get_goals(db: Annotated[Session, Depends(database.get_db)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
     """Получить все цели текущего пользователя"""
     return db.query(models.Goal).filter(models.Goal.user_id == current_user.id).all()
 
 @app.post("/api/goals", response_model=schemas.Goal)
-def create_goal(goal: schemas.GoalCreate, db: Session = Depends(database.get_db), current_user: models.User = Depends(auth.get_current_user)):
+def create_goal(goal: schemas.GoalCreate, db: Annotated[Session, Depends(database.get_db)], current_user: Annotated[models.User, Depends(auth.get_current_user)]):
     """Создать новую цель"""
     db_goal = models.Goal(**goal.model_dump(), user_id=current_user.id)
     db.add(db_goal)
@@ -100,30 +100,30 @@ def create_goal(goal: schemas.GoalCreate, db: Session = Depends(database.get_db)
 @app.get("/api/goals/{goal_id}/tasks", response_model=List[schemas.Task])
 def get_tasks(
     goal_id: int,
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user),
+    db: Annotated[Session, Depends(database.get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_user)],
     accept_language: Optional[str] = Header(default=None),
 ):
     """Получить все задачи цели"""
     lang = i18n.resolve_language(accept_language)
     goal = db.query(models.Goal).filter(models.Goal.id == goal_id, models.Goal.user_id == current_user.id).first()
     if not goal:
-        raise HTTPException(status_code=404, detail=i18n.t("goal_not_found", lang))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=i18n.t("goal_not_found", lang))
     return db.query(models.Task).filter(models.Task.goal_id == goal_id).all()
 
 @app.post("/api/goals/{goal_id}/tasks", response_model=schemas.Task)
 def create_task(
     goal_id: int,
     task: schemas.TaskCreate,
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user),
+    db: Annotated[Session, Depends(database.get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_user)],
     accept_language: Optional[str] = Header(default=None),
 ):
     """Создать новую задачу"""
     lang = i18n.resolve_language(accept_language)
     goal = db.query(models.Goal).filter(models.Goal.id == goal_id, models.Goal.user_id == current_user.id).first()
     if not goal:
-        raise HTTPException(status_code=404, detail=i18n.t("goal_not_found", lang))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=i18n.t("goal_not_found", lang))
     db_task = models.Task(**task.model_dump(), goal_id=goal_id)
     db.add(db_task)
     db.commit()
@@ -134,20 +134,20 @@ def create_task(
 def update_task_status(
     task_id: int,
     task_update: schemas.TaskUpdate,
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user),
+    db: Annotated[Session, Depends(database.get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_user)],
     accept_language: Optional[str] = Header(default=None),
 ):
     """Обновить статус задачи"""
     lang = i18n.resolve_language(accept_language)
     db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
     if not db_task:
-        raise HTTPException(status_code=404, detail=i18n.t("task_not_found", lang))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=i18n.t("task_not_found", lang))
     
     # Проверяем, что задача принадлежит пользователю
     goal = db.query(models.Goal).filter(models.Goal.id == db_task.goal_id, models.Goal.user_id == current_user.id).first()
     if not goal:
-        raise HTTPException(status_code=403, detail=i18n.t("not_authorized", lang))
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=i18n.t("not_authorized", lang))
     
     db_task.is_completed = task_update.is_completed
     db.commit()
@@ -157,20 +157,20 @@ def update_task_status(
 @app.delete("/api/tasks/{task_id}", response_model=schemas.Task)
 def delete_task(
     task_id: int,
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user),
+    db: Annotated[Session, Depends(database.get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_user)],
     accept_language: Optional[str] = Header(default=None),
 ):
     """Удалить задачу"""
     lang = i18n.resolve_language(accept_language)
     db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
     if not db_task:
-        raise HTTPException(status_code=404, detail=i18n.t("task_not_found", lang))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=i18n.t("task_not_found", lang))
     
     # Проверяем, что задача принадлежит пользователю
     goal = db.query(models.Goal).filter(models.Goal.id == db_task.goal_id, models.Goal.user_id == current_user.id).first()
     if not goal:
-        raise HTTPException(status_code=403, detail=i18n.t("not_authorized", lang))
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail=i18n.t("not_authorized", lang))
     
     db.delete(db_task)
     db.commit()
@@ -179,15 +179,15 @@ def delete_task(
 @app.delete("/api/goals/{goal_id}", response_model=schemas.Goal)
 def delete_goal(
     goal_id: int,
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user),
+    db: Annotated[Session, Depends(database.get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_user)],
     accept_language: Optional[str] = Header(default=None),
 ):
     """Удалить цель"""
     lang = i18n.resolve_language(accept_language)
     db_goal = db.query(models.Goal).filter(models.Goal.id == goal_id, models.Goal.user_id == current_user.id).first()
     if not db_goal:
-        raise HTTPException(status_code=404, detail=i18n.t("goal_not_found", lang))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=i18n.t("goal_not_found", lang))
     db.delete(db_goal)
     db.commit()
     return db_goal
@@ -196,20 +196,20 @@ def delete_goal(
 @app.post("/api/goals/{goal_id}/analyze", response_model=schemas.GoalAnalysis)
 def analyze_goal(
     goal_id: int,
-    db: Session = Depends(database.get_db),
-    current_user: models.User = Depends(auth.get_current_user),
+    db: Annotated[Session, Depends(database.get_db)],
+    current_user: Annotated[models.User, Depends(auth.get_current_user)],
     accept_language: Optional[str] = Header(default=None),
 ):
     """Анализ цели с помощью AI"""
     lang = i18n.resolve_language(accept_language)
     goal = db.query(models.Goal).filter(models.Goal.id == goal_id, models.Goal.user_id == current_user.id).first()
     if not goal:
-        raise HTTPException(status_code=404, detail=i18n.t("goal_not_found", lang))
+        raise HTTPException(status_code=status.HTTP_404_NOT_FOUND, detail=i18n.t("goal_not_found", lang))
 
     api_key = os.getenv("OPENROUTER_API_KEY")
     if not api_key:
         raise HTTPException(
-            status_code=503,
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
             detail=i18n.t("ai_not_configured", lang),
         )
 
@@ -264,17 +264,17 @@ def analyze_goal(
         if provider_detail:
             detail = f"{detail} {provider_detail}"
         raise HTTPException(
-            status_code=502,
+            status_code=status.HTTP_502_BAD_GATEWAY,
             detail=detail,
         ) from error
     except URLError as error:
         raise HTTPException(
-            status_code=502,
+            status_code=status.HTTP_502_BAD_GATEWAY,
             detail=i18n.t("ai_provider_unreachable", lang),
         ) from error
     except (TimeoutError, json.JSONDecodeError) as error:
         raise HTTPException(
-            status_code=502,
+            status_code=status.HTTP_502_BAD_GATEWAY,
             detail=i18n.t("ai_provider_invalid_response", lang),
         ) from error
 
@@ -291,7 +291,7 @@ def analyze_goal(
             raise ValueError
     except (KeyError, IndexError, TypeError, ValueError, json.JSONDecodeError) as error:
         raise HTTPException(
-            status_code=502,
+            status_code=status.HTTP_502_BAD_GATEWAY,
             detail=i18n.t("ai_provider_invalid_analysis", lang),
         ) from error
 
