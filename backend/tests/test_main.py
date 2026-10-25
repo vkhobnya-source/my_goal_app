@@ -275,7 +275,7 @@ def test_update_task_status_changes_completion(db_session, current_user):
         current_user,
     )
 
-    updated = tasks_router.update_task_status(
+    updated = tasks_router.update_task(
         task.id,
         schemas.TaskUpdate(is_completed=True),
         db_session,
@@ -287,7 +287,7 @@ def test_update_task_status_changes_completion(db_session, current_user):
 
 def test_update_missing_task_returns_not_found(db_session, current_user):
     with pytest.raises(HTTPException) as error:
-        tasks_router.update_task_status(
+        tasks_router.update_task(
             404,
             schemas.TaskUpdate(is_completed=True),
             db_session,
@@ -308,7 +308,7 @@ def test_update_task_status_rejects_foreign_task(db_session, current_user, other
     )
 
     with pytest.raises(HTTPException) as error:
-        tasks_router.update_task_status(
+        tasks_router.update_task(
             task.id,
             schemas.TaskUpdate(is_completed=True),
             db_session,
@@ -379,6 +379,30 @@ def test_delete_missing_goal_returns_not_found(db_session, current_user):
 
     assert error.value.status_code == 404
     assert error.value.detail == "Goal not found"
+
+
+def test_update_goal_changes_title_and_description(db_session, current_user):
+    goal = create_goal(db_session, current_user, title="Old", description="Old desc")
+    updated = goals_router.update_goal(goal.id, schemas.GoalUpdate(title="New", description="New desc"), db_session, current_user)
+
+    assert updated.title == "New"
+    assert updated.description == "New desc"
+
+
+def test_update_goal_missing_returns_not_found(db_session, current_user):
+    with pytest.raises(HTTPException) as error:
+        goals_router.update_goal(999, schemas.GoalUpdate(title="New"), db_session, current_user)
+
+    assert error.value.status_code == 404
+
+
+def test_update_task_changes_title(db_session, current_user):
+    goal = create_goal(db_session, current_user)
+    task = tasks_router.create_task(goal.id, schemas.TaskCreate(title="Old"), db_session, current_user)
+
+    updated = tasks_router.update_task(task.id, schemas.TaskUpdate(title="New"), db_session, current_user)
+
+    assert updated.title == "New"
 
 
 # ==================== AI ANALYSIS ====================

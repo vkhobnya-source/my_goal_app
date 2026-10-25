@@ -49,15 +49,16 @@ def create_task(
     return db_task
 
 
+@router.put("/tasks/{task_id}", response_model=schemas.Task)
 @router.patch("/tasks/{task_id}", response_model=schemas.Task)
-def update_task_status(
+def update_task(
     task_id: int,
     task_update: schemas.TaskUpdate,
     db: Annotated[Session, Depends(database.get_db)],
     current_user: Annotated[models.User, Depends(auth.get_current_user)],
     accept_language: Optional[str] = Header(default=None),
 ) -> schemas.Task:
-    """Обновить статус задачи"""
+    """Обновить задачу"""
     lang = i18n.resolve_language(accept_language)
     db_task = db.query(models.Task).filter(models.Task.id == task_id).first()
     if not db_task:
@@ -74,7 +75,10 @@ def update_task_status(
             detail=i18n.t("not_authorized", lang),
         )
 
-    db_task.is_completed = task_update.is_completed
+    if task_update.title is not None:
+        db_task.title = task_update.title
+    if task_update.is_completed is not None:
+        db_task.is_completed = task_update.is_completed
     db.commit()
     db.refresh(db_task)
     return db_task

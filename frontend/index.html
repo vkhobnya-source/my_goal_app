@@ -103,6 +103,7 @@
                 'task.add': 'Add',
                 'tasks.empty': 'No tasks yet. Add the first task!',
                 'common.delete': 'Delete',
+                'common.edit': 'Edit',
                 'auth.emailRequired': 'Email is required.',
                 'auth.passwordRequired': 'Password is required.',
                 'auth.passwordShort': 'Password must be at least 6 characters.',
@@ -141,6 +142,7 @@
                 'tasks.empty': 'Пока нет задач. Добавьте первую задачу!',
                 'goals.empty': 'Пока нет целей. Создайте первую цель!',
                 'common.delete': 'Удалить'
+                'common.edit': 'Изменить'
             }
         };
 
@@ -150,6 +152,8 @@
         let authToken = null;
         let isLogin = true;
         let currentTheme = 'light';
+        let editingGoalId = null;
+        let editingTaskId = null;
 
         const themeToggleBtn = document.getElementById('theme-toggle-btn');
 
@@ -351,6 +355,8 @@
 
         function resetSession() {
             authToken = null;
+            editingGoalId = null;
+            editingTaskId = null;
             localStorage.removeItem('token');
             selectedGoalId = null;
             selectedGoalTitleText = '';
@@ -420,6 +426,7 @@
                                 </div>
                                 <span class="progress-text">${progressPercent}% (${completedTasks}/${totalTasks})</span>
                             </div>
+                            <button type="button" class="edit-btn" data-goal-id="${goal.id}">${t('common.edit')}</button>
                             <button type="button" class="delete-btn danger-btn" data-goal-id="${goal.id}">${t('common.delete')}</button>
                         </div>
                     `;
@@ -431,6 +438,14 @@
                     deleteBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         deleteGoal(goal.id);
+                    });
+
+                    const editBtn = goalEl.querySelector('.edit-btn');
+                    editBtn.addEventListener('click', () => {
+                        editingGoalId = goal.id;
+                        document.getElementById('goal-title').value = goal.title;
+                        document.getElementById('goal-desc').value = goal.description || '';
+                        goalError.style.display = 'none';
                     });
 
                     goalsList.appendChild(goalEl);
@@ -454,12 +469,15 @@
             goalError.style.display = 'none';
 
             try {
-                await apiFetch('/goals', {
-                    method: 'POST',
+                const method = editingGoalId ? 'PUT' : 'POST';
+                const url = editingGoalId ? '/goals/' + editingGoalId : '/goals';
+                await apiFetch(url, {
+                    method,
                     body: JSON.stringify({ title, description })
                 });
 
                 goalForm.reset();
+                editingGoalId = null;
                 fetchGoals();
             } catch (error) {
                 console.error('Error creating goal:', error);
@@ -556,18 +574,58 @@
                     checkbox.checked = task.is_completed;
                     checkbox.addEventListener('change', () => toggleTask(task));
 
-                    const span = document.createElement('span');
-                    span.innerText = task.title;
-                    if (task.is_completed) span.className = 'completed';
+                    let titleEl;
+                    if (task.id === editingTaskId) {
+                        const input = document.createElement('input');
+                        input.type = 'text';
+                        input.className = 'task-edit-input';
+                        input.value = task.title;
+                        let committed = false;
+                        const commit = async () => {
+                            if (committed) return;
+                            committed = true;
+                            const value = input.value;
+                            if (value && value.trim()) {
+                                editingTaskId = null;
+                                await apiFetch('/tasks/' + task.id, {
+                                    method: 'PATCH',
+                                    body: JSON.stringify({ title: value })
+                                });
+                                fetchTasks(selectedGoalId);
+                                fetchGoals();
+                            } else {
+                                input.value = task.title;
+                            }
+                        };
+                        input.addEventListener('keydown', (e) => {
+                            if (e.key === 'Enter') commit();
+                        });
+                        input.addEventListener('blur', commit);
+                        titleEl = input;
+                    } else {
+                        const span = document.createElement('span');
+                        span.innerText = task.title;
+                        if (task.is_completed) span.className = 'completed';
+                        titleEl = span;
+                    }
 
                     const deleteButton = document.createElement('button');
                     deleteButton.type = 'button';
                     deleteButton.className = 'delete-btn task-delete-btn';
                     deleteButton.innerText = t('common.delete');
+                    const editButton = document.createElement('button');
+                    editButton.type = 'button';
+                    editButton.className = 'edit-btn task-edit-btn';
+                    editButton.innerText = t('common.edit');
+                    editButton.addEventListener('click', () => {
+                        editingTaskId = task.id;
+                        fetchTasks(selectedGoalId);
+                    });
+
                     deleteButton.addEventListener('click', () => deleteTask(task.id));
 
                     li.appendChild(checkbox);
-                    li.appendChild(span);
+                    li.appendChild(titleEl);
                     li.appendChild(deleteButton);
                     tasksList.appendChild(li);
                 });
@@ -611,6 +669,7 @@
 
                 if (selectedGoalId === goalId) {
                     selectedGoalId = null;
+                    editingGoalId = null;
                     selectedGoalTitleText = '';
                     renderSelectedGoalHeading();
                     tasksContainer.style.display = 'none';

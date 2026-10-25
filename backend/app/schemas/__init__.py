@@ -1,4 +1,4 @@
-from .goal import Goal, GoalAnalysis, GoalBase, GoalCreate
+from .goal import Goal, GoalAnalysis, GoalBase, GoalCreate, GoalUpdate
 from .task import Task, TaskBase, TaskCreate, TaskUpdate
 from .user import Token, TokenData, User, UserBase, UserCreate
 
@@ -8,6 +8,7 @@ __all__ = [
     "GoalAnalysis",
     "GoalBase",
     "GoalCreate",
+    "GoalUpdate",
     "Task",
     "TaskBase",
     "TaskCreate",
