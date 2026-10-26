@@ -381,6 +381,17 @@ def test_delete_missing_goal_returns_not_found(db_session, current_user):
     assert error.value.detail == "Goal not found"
 
 
+def test_delete_goal_rejects_foreign_goal(db_session, current_user, other_user):
+    goal = create_goal(db_session, other_user)
+
+    with pytest.raises(HTTPException) as error:
+        goals_router.delete_goal(goal.id, db_session, current_user)
+
+    assert error.value.status_code == 404
+    assert error.value.detail == "Goal not found"
+    assert db_session.get(models.Goal, goal.id) is not None
+
+
 def test_update_goal_changes_title_and_description(db_session, current_user):
     goal = create_goal(db_session, current_user, title="Old", description="Old desc")
     updated = goals_router.update_goal(goal.id, schemas.GoalUpdate(title="New", description="New desc"), db_session, current_user)

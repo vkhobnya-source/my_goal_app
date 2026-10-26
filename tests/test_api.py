@@ -175,6 +175,46 @@ def test_goals_are_isolated_between_users(client):
     assert client.get("/api/goals", headers=second_headers).json() == []
 
 
+def test_foreign_goal_is_not_accessible(client, auth_headers):
+    goal_res = client.post(
+        "/api/goals", json={"title": "Private goal"}, headers=auth_headers
+    )
+    goal_id = goal_res.json()["id"]
+
+    second = client.post(
+        "/api/auth/register",
+        json={"email": "intruder@example.com", "password": "secret"},
+    )
+    intruder_headers = {"Authorization": f"Bearer {second.json()['access_token']}"}
+
+    assert client.get("/api/goals", headers=intruder_headers).json() == []
+    assert (
+        client.get(f"/api/goals/{goal_id}/tasks", headers=intruder_headers).status_code
+        == 404
+    )
+    assert (
+        client.put(
+            f"/api/goals/{goal_id}",
+            json={"title": "Hacked"},
+            headers=intruder_headers,
+        ).status_code
+        == 404
+    )
+    assert (
+        client.post(
+            f"/api/goals/{goal_id}/analyze", headers=intruder_headers
+        ).status_code
+        == 404
+    )
+    assert (
+        client.delete(f"/api/goals/{goal_id}", headers=intruder_headers).status_code
+        == 404
+    )
+
+    goals = client.get("/api/goals", headers=auth_headers).json()
+    assert [goal["title"] for goal in goals] == ["Private goal"]
+
+
 def test_error_messages_are_localized(client):
     register = client.post(
         "/api/auth/register",

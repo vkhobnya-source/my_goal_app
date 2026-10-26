@@ -1,3 +1,4 @@
+import json
 import os
 import time
 
@@ -107,6 +108,54 @@ def test_ai_suggestions_can_be_added_as_tasks():
         expect(page.locator(".task-item", has_text=suggested_task)).to_be_visible()
 
         goal.locator(".delete-btn").click()
+    finally:
+        browser.close()
+        playwright.stop()
+
+
+def test_user_content_is_rendered_as_text():
+    playwright, browser, page = open_page()
+    title = '<img src=x onerror="window.__goalXss=1">Goal'
+    description = '<script>window.__descriptionXss=1</script>Description'
+    analysis = '<img src=x onerror="window.__analysisXss=1">Analysis'
+
+    try:
+        page.locator("#goal-title").fill(title)
+        page.locator("#goal-desc").fill(description)
+        page.locator("#goal-form button").click()
+
+        goal = page.locator(".goal-item").first
+        expect(goal).to_be_visible()
+        expect(goal.locator("h3")).to_have_text(title)
+        expect(goal.locator("p")).to_have_text(description)
+        expect(goal.locator("img")).to_have_count(0)
+        expect(goal.locator("script")).to_have_count(0)
+        assert page.evaluate("window.__goalXss") is None
+        assert page.evaluate("window.__descriptionXss") is None
+
+        goal.locator(".goal-main").click()
+
+        def mock_analysis(route):
+            route.fulfill(
+                status=200,
+                content_type="application/json",
+                body=json.dumps(
+                    {"analysis": analysis, "proposed_tasks": ["<b>Task</b>"]}
+                ),
+            )
+
+        page.route("**/api/goals/*/analyze", mock_analysis)
+        page.locator("#analyze-goal-button").click()
+
+        result = page.locator("#goal-analysis")
+        expect(result).to_be_visible()
+        expect(result.locator("strong")).to_have_text(analysis)
+        expect(result.locator("img")).to_have_count(0)
+        assert page.evaluate("window.__analysisXss") is None
+
+        suggested = result.locator(".suggested-tasks li").first
+        expect(suggested).to_contain_text("<b>Task</b>")
+        expect(suggested.locator("b")).to_have_count(0)
     finally:
         browser.close()
         playwright.stop()

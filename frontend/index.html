@@ -416,31 +416,60 @@
                     const goalEl = document.createElement('div');
                     goalEl.className = `goal-item ${selectedGoalId === goal.id ? 'active' : ''}`;
 
-                    goalEl.innerHTML = `
-                        <div class="goal-row">
-                            <div class="goal-main" data-goal-id="${goal.id}">
-                                <h3>${goal.title}</h3>
-                                <p>${goal.description || ''}</p>
-                                <div class="progress-container">
-                                    <div class="progress-bar" style="width: ${progressPercent}%"></div>
-                                </div>
-                                <span class="progress-text">${progressPercent}% (${completedTasks}/${totalTasks})</span>
-                            </div>
-                            <button type="button" class="edit-btn" data-goal-id="${goal.id}">${t('common.edit')}</button>
-                            <button type="button" class="delete-btn danger-btn" data-goal-id="${goal.id}">${t('common.delete')}</button>
-                        </div>
-                    `;
+                    const goalRow = document.createElement('div');
+                    goalRow.className = 'goal-row';
 
-                    const goalMain = goalEl.querySelector('.goal-main');
+                    const goalMain = document.createElement('div');
+                    goalMain.className = 'goal-main';
+                    goalMain.dataset.goalId = goal.id;
+
+                    const goalTitleEl = document.createElement('h3');
+                    goalTitleEl.textContent = goal.title;
+
+                    const goalDescriptionEl = document.createElement('p');
+                    goalDescriptionEl.textContent = goal.description || '';
+
+                    const progressContainer = document.createElement('div');
+                    progressContainer.className = 'progress-container';
+
+                    const progressBar = document.createElement('div');
+                    progressBar.className = 'progress-bar';
+                    progressBar.style.width = `${progressPercent}%`;
+                    progressContainer.appendChild(progressBar);
+
+                    const progressText = document.createElement('span');
+                    progressText.className = 'progress-text';
+                    progressText.textContent = `${progressPercent}% (${completedTasks}/${totalTasks})`;
+
+                    goalMain.append(
+                        goalTitleEl,
+                        goalDescriptionEl,
+                        progressContainer,
+                        progressText
+                    );
+
+                    const editBtn = document.createElement('button');
+                    editBtn.type = 'button';
+                    editBtn.className = 'edit-btn';
+                    editBtn.dataset.goalId = goal.id;
+                    editBtn.textContent = t('common.edit');
+
+                    const deleteBtn = document.createElement('button');
+                    deleteBtn.type = 'button';
+                    deleteBtn.className = 'delete-btn danger-btn';
+                    deleteBtn.dataset.goalId = goal.id;
+                    deleteBtn.textContent = t('common.delete');
+
+                    goalRow.append(goalMain, editBtn, deleteBtn);
+                    goalEl.appendChild(goalRow);
+
                     goalMain.addEventListener('click', () => selectGoal(goal));
 
-                    const deleteBtn = goalEl.querySelector('.delete-btn');
                     deleteBtn.addEventListener('click', (e) => {
                         e.stopPropagation();
                         deleteGoal(goal.id);
                     });
 
-                    const editBtn = goalEl.querySelector('.edit-btn');
                     editBtn.addEventListener('click', () => {
                         editingGoalId = goal.id;
                         document.getElementById('goal-title').value = goal.title;
@@ -517,12 +546,16 @@
                     throw new Error(result.detail || t('tasks.analyzeFailed'));
                 }
 
-                goalAnalysis.innerHTML = `
-                    <strong>${result.analysis}</strong>
-                    <p>${t('tasks.suggestedHeader')}</p>
-                    <ul class="suggested-tasks"></ul>
-                `;
-                const taskList = goalAnalysis.querySelector('.suggested-tasks');
+                const analysisText = document.createElement('strong');
+                analysisText.textContent = result.analysis;
+
+                const suggestedHeader = document.createElement('p');
+                suggestedHeader.textContent = t('tasks.suggestedHeader');
+
+                const taskList = document.createElement('ul');
+                taskList.className = 'suggested-tasks';
+
+                goalAnalysis.replaceChildren(analysisText, suggestedHeader, taskList);
                 result.proposed_tasks.forEach(taskTitle => {
                     const item = document.createElement('li');
                     const text = document.createElement('span');

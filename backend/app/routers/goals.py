@@ -40,10 +40,15 @@ def delete_goal(
     goal_id: int,
     db: Annotated[Session, Depends(database.get_db)],
     current_user: Annotated[models.User, Depends(auth.get_current_user)],
+    accept_language: Optional[str] = Header(default=None),
 ) -> schemas.Goal:
     """Удалить цель"""
-    lang = i18n.resolve_language(None)
-    db_goal = db.query(models.Goal).filter(models.Goal.id == goal_id).first()
+    lang = i18n.resolve_language(accept_language)
+    db_goal = (
+        db.query(models.Goal)
+        .filter(models.Goal.id == goal_id, models.Goal.user_id == current_user.id)
+        .first()
+    )
     if not db_goal:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
